@@ -1,0 +1,273 @@
+<title>Kenzen Payment Desk</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: operations console — a ledger strip of totals, tabbed work areas, and a side drawer that holds each payment voucher */
+:root{
+  --bg:#F2F3EF; --surface:#FFFFFF; --sunk:#E9EBE6; --ink:#16201B; --muted:#5D6762; --line:#D8DCD5;
+  --accent:#2D3A8A; --accent-ink:#FFFFFF; --accent-soft:#E5E8F6;
+  --ok:#1C6A46; --ok-soft:#E0F0E6; --warn:#875700; --warn-soft:#FAEFD6; --bad:#A12F29; --bad-soft:#F7E2DF;
+  --paid:#3D5466; --paid-soft:#E3E9ED;
+  --shadow:0 1px 2px rgba(22,32,27,.06),0 12px 32px rgba(22,32,27,.12);
+  --f-display:"Familjen Grotesk","Helvetica Neue",Arial,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111513; --surface:#191E1B; --sunk:#212724; --ink:#E6E9E5; --muted:#9AA39E; --line:#2D3430;
+  --accent:#A3AEF5; --accent-ink:#111513; --accent-soft:#252A49;
+  --ok:#6FC99D; --ok-soft:#173025; --warn:#E7B85E; --warn-soft:#382C12; --bad:#F28C82; --bad-soft:#3A1C19;
+  --paid:#AABDCC; --paid-soft:#212E37; --shadow:0 1px 2px rgba(0,0,0,.5),0 12px 32px rgba(0,0,0,.5); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111513; --surface:#191E1B; --sunk:#212724; --ink:#E6E9E5; --muted:#9AA39E; --line:#2D3430;
+  --accent:#A3AEF5; --accent-ink:#111513; --accent-soft:#252A49;
+  --ok:#6FC99D; --ok-soft:#173025; --warn:#E7B85E; --warn-soft:#382C12; --bad:#F28C82; --bad-soft:#3A1C19;
+  --paid:#AABDCC; --paid-soft:#212E37; --shadow:0 1px 2px rgba(0,0,0,.5),0 12px 32px rgba(0,0,0,.5); color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--f-body);}
+.wrap{max-width:1280px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px;display:flex;flex-direction:column;gap:18px}
+h1,h2,h3{font-family:var(--f-display);font-weight:600;letter-spacing:-.01em;margin:0;text-wrap:balance}
+h1{font-size:26px} h2{font-size:19px} h3{font-size:15px}
+.num,.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+a{color:var(--accent)}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.top{display:flex;flex-wrap:wrap;align-items:center;gap:12px 18px;justify-content:space-between}
+.brand{display:flex;flex-direction:column;gap:2px}
+.brand .eyebrow{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.who{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.avatar{width:28px;height:28px;border-radius:50%;object-fit:cover;background:var(--sunk)}
+.rolechip{font-size:11px;letter-spacing:.04em;text-transform:uppercase;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent)}
+
+.btn{border:1px solid var(--line);background:var(--surface);padding:8px 14px;border-radius:8px;cursor:pointer;font-weight:500;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.ok{background:var(--ok);border-color:var(--ok);color:var(--surface)}
+.btn.bad{color:var(--bad);border-color:var(--bad)}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--accent);padding-inline:6px}
+.btn.sm{padding:4px 10px;font-size:13px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+
+.ledger{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));background:var(--surface);border:1px solid var(--line);border-radius:12px}
+.ledger > div{padding:14px 18px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.ledger > div + div{border-left:1px solid var(--line)}
+.ledger .lab{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.ledger .val{font-family:var(--f-mono);font-variant-numeric:tabular-nums;font-size:20px;font-weight:500;overflow-wrap:anywhere}
+.ledger .sub{font-size:12px;color:var(--muted)}
+.ledger .you .val{color:var(--accent)}
+@media (max-width:720px){.ledger{grid-template-columns:repeat(2,minmax(0,1fr))}.ledger > div:nth-child(3){border-left:0}.ledger > div:nth-child(n+3){border-top:1px solid var(--line)}}
+
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);overflow-x:auto}
+.tab{background:none;border:0;padding:10px 14px;cursor:pointer;color:var(--muted);font-weight:500;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;display:flex;gap:6px;align-items:center}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.badge{font-family:var(--f-mono);font-size:11px;background:var(--accent);color:var(--accent-ink);border-radius:999px;padding:0 7px;line-height:18px}
+
+.panel{display:flex;flex-direction:column;gap:14px}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.toolbar .grow{flex:1 1 220px;min-width:0}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field label,.flabel{font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.02em}
+input[type=text],input[type=number],input[type=date],input[type=email],input[type=search],input[type=url],select,textarea{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-width:0}
+input[readonly]{background:var(--sunk)}
+textarea{resize:vertical;min-height:72px}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px var(--accent-soft)}
+.hint{font-size:12px;color:var(--muted)}
+.hint.good{color:var(--ok)} .hint.alert{color:var(--warn)}
+.err{font-size:12px;color:var(--bad)}
+.check{display:flex;gap:8px;align-items:flex-start;font-size:14px;cursor:pointer}
+.check input{margin-top:4px}
+
+.notice{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:12px 14px;display:flex;gap:12px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
+.notice.warn{background:var(--warn-soft);border-color:transparent}
+.notice p{margin:0}
+
+.tablewrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:12px}
+table{border-collapse:collapse;width:100%;min-width:1120px}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;background:var(--sunk);vertical-align:middle}
+tbody tr:last-child td{border-bottom:0}
+tbody tr.click{cursor:pointer}
+tbody tr.click:hover{background:var(--sunk)}
+td.r,th.r{text-align:right}
+.cell-main{font-weight:500}
+.cell-sub{font-size:12px;color:var(--muted)}
+.bif{font-size:11.5px;color:var(--muted);font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.group-h{display:flex;align-items:baseline;gap:8px;margin-top:4px}
+
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:2px 9px;border-radius:999px;white-space:nowrap}
+.chip::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.s-pending{background:var(--warn-soft);color:var(--warn)}
+.s-approved{background:var(--ok-soft);color:var(--ok)}
+.s-rejected{background:var(--bad-soft);color:var(--bad)}
+.s-paid{background:var(--paid-soft);color:var(--paid)}
+.s-muted{background:var(--sunk);color:var(--muted)}
+.tag{font-size:11px;font-weight:600;padding:1px 7px;border-radius:5px;background:var(--accent-soft);color:var(--accent);white-space:nowrap}
+.urgent{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--bad)}
+.overdue{color:var(--bad);font-weight:600}
+
+.verdict{display:flex;flex-direction:column;gap:3px;min-width:170px}
+.vlabel{font-weight:700;font-size:13px;display:inline-flex;align-items:center;gap:6px}
+.vlabel::before{content:"";width:9px;height:9px;border-radius:2px;background:currentColor}
+.v-yes{color:var(--ok)} .v-no{color:var(--bad)} .v-wait{color:var(--warn)} .v-paid{color:var(--paid)}
+.vreason{font-size:12px;color:var(--muted);line-height:1.35}
+
+.empty{background:var(--surface);border:1px dashed var(--line);border-radius:12px;padding:28px 20px;text-align:center;display:flex;flex-direction:column;gap:6px;align-items:center}
+.empty p{margin:0;max-width:52ch}
+
+.scrim{position:fixed;inset:0;background:rgba(10,14,12,.45);z-index:20}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(640px,100%);background:var(--bg);z-index:21;box-shadow:var(--shadow);display:flex;flex-direction:column;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);padding-right:env(safe-area-inset-right,0px)}
+.drawer-h{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 20px;border-bottom:1px solid var(--line);background:var(--surface)}
+.drawer-b{overflow-y:auto;padding:18px 20px 28px;display:flex;flex-direction:column;gap:16px;flex:1}
+.drawer-f{padding:12px 20px;border-top:1px solid var(--line);background:var(--surface);display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width:520px){.grid2,.grid3{grid-template-columns:minmax(0,1fr)}.span2{grid-column:auto!important}}
+.span2{grid-column:span 2}
+.sect{display:flex;flex-direction:column;gap:10px}
+.sect-h{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600;border-bottom:1px solid var(--line);padding-bottom:6px;display:flex;justify-content:space-between;gap:8px;align-items:center}
+
+.voucher{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:4px 14px}
+.vrow{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px dashed var(--line)}
+.vrow:last-child{border-bottom:0}
+.vrow .num{text-align:right}
+.vrow.total{border-top:1px solid var(--ink);border-bottom:0;margin-top:2px;padding-top:10px}
+.vrow.total .num{font-size:20px;font-weight:600}
+.kv{display:grid;grid-template-columns:minmax(110px,max-content) minmax(0,1fr);gap:6px 14px;font-size:14px}
+.kv dt{color:var(--muted)} .kv dd{margin:0;overflow-wrap:anywhere}
+.route{display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:13px}
+.step{padding:3px 10px;border-radius:6px;background:var(--sunk);color:var(--muted);font-weight:500}
+.step.done{background:var(--ok-soft);color:var(--ok)}
+.step.now{background:var(--warn-soft);color:var(--warn)}
+.step.stop{background:var(--bad-soft);color:var(--bad)}
+.timeline{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.timeline li{display:grid;grid-template-columns:14px minmax(0,1fr);gap:10px;font-size:14px}
+.timeline .dot{width:10px;height:10px;border-radius:50%;margin-top:6px;background:var(--line)}
+.timeline .dot.ok{background:var(--ok)} .timeline .dot.bad{background:var(--bad)} .timeline .dot.acc{background:var(--accent)}
+.timeline .note{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 10px;margin-top:4px;white-space:pre-wrap}
+.files{display:flex;flex-direction:column;gap:6px}
+.file{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:14px;min-width:0}
+.file a,.file span.fn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.actbox{background:var(--surface);border:1px solid var(--accent);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.readbox{background:var(--accent-soft);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;font-size:14px}
+.readbox table{min-width:0;background:transparent}
+.readbox td,.readbox th{padding:4px 6px;border-bottom:1px solid var(--line);background:transparent}
+
+.checklist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;font-size:14px}
+.checklist li{display:grid;grid-template-columns:20px minmax(0,1fr);gap:8px;align-items:start}
+.mark{width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;margin-top:2px}
+.mark.ok{background:var(--ok-soft);color:var(--ok)} .mark.no{background:var(--bad-soft);color:var(--bad)} .mark.warn{background:var(--warn-soft);color:var(--warn)} .mark.acc{background:var(--accent-soft);color:var(--accent)}
+.vbox{border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:10px;border:1px solid var(--line);background:var(--surface)}
+.vbox.yes{border-color:var(--ok)} .vbox.no{border-color:var(--bad)} .vbox.wait{border-color:var(--warn)}
+
+.rolecard{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.people{display:flex;flex-wrap:wrap;gap:6px}
+.person{display:inline-flex;align-items:center;gap:6px;background:var(--sunk);border-radius:999px;padding:3px 4px 3px 3px;font-size:13px}
+.person img{width:22px;height:22px;border-radius:50%}
+.person button{border:0;background:none;cursor:pointer;color:var(--muted);padding:0 6px;font-size:15px;line-height:1}
+.picker{position:relative}
+.hits{position:absolute;left:0;right:0;top:100%;margin-top:4px;background:var(--surface);border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow);z-index:5;max-height:260px;overflow-y:auto}
+.hit{display:flex;gap:8px;align-items:center;padding:8px 10px;cursor:pointer;width:100%;border:0;background:none;text-align:left}
+.hit:hover,.hit:focus{background:var(--sunk)}
+.hit img{width:24px;height:24px;border-radius:50%}
+.rolegrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width:860px){.rolegrid{grid-template-columns:minmax(0,1fr)}}
+.tdsgrid{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:12px}
+.tdsgrid table{min-width:880px}
+.tdsgrid td{padding:6px 8px;vertical-align:middle}
+.tdsgrid input,.tdsgrid select{padding:6px 8px}
+
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;z-index:40;max-width:min(560px,calc(100% - 32px));font-size:14px;box-shadow:var(--shadow)}
+.toast.bad{background:var(--bad);color:var(--surface)}
+.infobox{background:var(--sunk);border-radius:10px;padding:10px 14px;font-size:14px;display:flex;flex-direction:column;gap:4px}
+.selbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;background:var(--accent-soft);border-radius:10px;padding:10px 14px}
+@media (prefers-reduced-motion:no-preference){.drawer{animation:slide .18s ease-out}@keyframes slide{from{transform:translateX(24px);opacity:.6}to{transform:none;opacity:1}}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <span class="eyebrow">Kenzen Ventures · Accounts</span>
+      <h1>Payment Desk</h1>
+    </div>
+    <div class="who">
+      <span id="who"></span>
+      <button class="btn" id="btn-xlsx" type="button">Download Excel log</button>
+      <button class="btn primary" id="btn-new" type="button">New payment request</button>
+    </div>
+  </header>
+
+  <section class="ledger" aria-label="Totals">
+    <div class="you"><span class="lab">Waiting on you</span><span class="val" id="sum-you">—</span><span class="sub" id="sum-you-sub">&nbsp;</span></div>
+    <div><span class="lab">In approval</span><span class="val" id="sum-pend">—</span><span class="sub" id="sum-pend-sub">&nbsp;</span></div>
+    <div><span class="lab">Ready to pay</span><span class="val" id="sum-appr">—</span><span class="sub" id="sum-appr-sub">&nbsp;</span></div>
+    <div><span class="lab" id="sum-paid-lab">Paid this month</span><span class="val" id="sum-paid">—</span><span class="sub" id="sum-paid-sub">&nbsp;</span></div>
+  </section>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab" role="tab" data-tab="queue" aria-selected="true">For you <span class="badge" id="badge-queue" hidden></span></button>
+    <button class="tab" role="tab" data-tab="all" aria-selected="false">All requests</button>
+    <button class="tab" role="tab" data-tab="pay" aria-selected="false">Payments <span class="badge" id="badge-pay" hidden></span></button>
+    <button class="tab" role="tab" data-tab="payees" aria-selected="false">Payees</button>
+    <button class="tab" role="tab" data-tab="settings" aria-selected="false">Approvals &amp; settings</button>
+  </nav>
+
+  <section class="panel" id="panel-queue">
+    <div id="queue-banner"></div>
+    <div id="queue-body"></div>
+  </section>
+
+  <section class="panel" id="panel-all" hidden>
+    <div class="toolbar">
+      <div class="field grow"><label for="flt-q">Search</label><input type="search" id="flt-q" placeholder="Payee, invoice no., nature, request ID, Instagram handle"></div>
+      <div class="field"><label for="flt-status">Status</label>
+        <select id="flt-status">
+          <option value="all">All statuses</option>
+          <option value="pending">In approval</option>
+          <option value="approved">Approved, unpaid</option>
+          <option value="paid">Paid</option>
+          <option value="rejected">Sent back</option>
+          <option value="withdrawn">Withdrawn</option>
+        </select></div>
+      <div class="field"><label for="flt-verdict">Can be paid?</label>
+        <select id="flt-verdict"><option value="all">Any</option><option value="yes">Yes</option><option value="no">No</option><option value="wait">Not yet</option></select></div>
+      <div class="field"><label for="flt-cc">Cost centre</label><select id="flt-cc"><option value="all">All cost centres</option></select></div>
+    </div>
+    <div id="all-body"></div>
+  </section>
+
+  <section class="panel" id="panel-pay" hidden>
+    <div id="pay-bar"></div>
+    <div id="pay-body"></div>
+    <div class="group-h"><h2>Recently paid</h2><span class="muted small">last 60 days</span></div>
+    <div id="paid-body"></div>
+  </section>
+
+  <section class="panel" id="panel-payees" hidden>
+    <div class="toolbar">
+      <div class="field grow"><label for="payee-q">Search payees</label><input type="search" id="payee-q" placeholder="Name, GSTIN, PAN, IFSC, Instagram handle"></div>
+      <button class="btn" id="btn-add-payee" type="button" style="align-self:flex-end">Add payee</button>
+    </div>
+    <div id="payees-body"></div>
+  </section>
+
+  <section class="panel" id="panel-settings" hidden>
+    <div id="settings-body"></div>
+  </section>
+</div>
+
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer" id="drawer" hidden aria-modal="true" role="dialog" aria-labelledby="drawer-title">
+  <div class="drawer-h"><h2 id="drawer-title"></h2><button class="btn ghost" type="button" id="drawer-close" aria-label="Close">Close</button></div>
+  <div class="drawer-b" id="drawer-body"></div>
+  <div class="drawer-f" id="drawer-foot" hidden></div>
+</aside>
+<div class="toast" id="toast" hidden role="status"></div>
+

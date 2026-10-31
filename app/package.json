@@ -1,0 +1,30 @@
+{
+  "name": "kenzen-payment-desk",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:client": "vite",
+    "dev:server": "node --env-file=.env scripts/dev-api-server.mjs",
+    "dev:api": "node --env-file=.env scripts/dev-api-server.mjs",
+    "dev:all": "concurrently -n client,server -c blue,green \"npm:dev:client\" \"npm:dev:server\"",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "cookie": "^1.0.2",
+    "google-auth-library": "^9.15.0",
+    "googleapis": "^189.0.0",
+    "jsonwebtoken": "^9.0.3",
+    "pdf-parse": "^2.4.5",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.28.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^10.0.6",
+    "vite": "^5.4.11"
+  }
+}

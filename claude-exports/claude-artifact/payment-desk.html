@@ -1,0 +1,1647 @@
+<title>Kenzen Payment Desk</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: operations console — a ledger strip of totals, tabbed work areas, and a side drawer that holds each payment voucher */
+:root{
+  --bg:#F2F3EF; --surface:#FFFFFF; --sunk:#E9EBE6; --ink:#16201B; --muted:#5D6762; --line:#D8DCD5;
+  --accent:#2D3A8A; --accent-ink:#FFFFFF; --accent-soft:#E5E8F6;
+  --ok:#1C6A46; --ok-soft:#E0F0E6; --warn:#875700; --warn-soft:#FAEFD6; --bad:#A12F29; --bad-soft:#F7E2DF;
+  --paid:#3D5466; --paid-soft:#E3E9ED;
+  --shadow:0 1px 2px rgba(22,32,27,.06),0 12px 32px rgba(22,32,27,.12);
+  --f-display:"Familjen Grotesk","Helvetica Neue",Arial,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111513; --surface:#191E1B; --sunk:#212724; --ink:#E6E9E5; --muted:#9AA39E; --line:#2D3430;
+  --accent:#A3AEF5; --accent-ink:#111513; --accent-soft:#252A49;
+  --ok:#6FC99D; --ok-soft:#173025; --warn:#E7B85E; --warn-soft:#382C12; --bad:#F28C82; --bad-soft:#3A1C19;
+  --paid:#AABDCC; --paid-soft:#212E37; --shadow:0 1px 2px rgba(0,0,0,.5),0 12px 32px rgba(0,0,0,.5); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111513; --surface:#191E1B; --sunk:#212724; --ink:#E6E9E5; --muted:#9AA39E; --line:#2D3430;
+  --accent:#A3AEF5; --accent-ink:#111513; --accent-soft:#252A49;
+  --ok:#6FC99D; --ok-soft:#173025; --warn:#E7B85E; --warn-soft:#382C12; --bad:#F28C82; --bad-soft:#3A1C19;
+  --paid:#AABDCC; --paid-soft:#212E37; --shadow:0 1px 2px rgba(0,0,0,.5),0 12px 32px rgba(0,0,0,.5); color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--f-body);}
+.wrap{max-width:1280px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px;display:flex;flex-direction:column;gap:18px}
+h1,h2,h3{font-family:var(--f-display);font-weight:600;letter-spacing:-.01em;margin:0;text-wrap:balance}
+h1{font-size:26px} h2{font-size:19px} h3{font-size:15px}
+.num,.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+a{color:var(--accent)}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.top{display:flex;flex-wrap:wrap;align-items:center;gap:12px 18px;justify-content:space-between}
+.brand{display:flex;flex-direction:column;gap:2px}
+.brand .eyebrow{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.who{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.avatar{width:28px;height:28px;border-radius:50%;object-fit:cover;background:var(--sunk)}
+.rolechip{font-size:11px;letter-spacing:.04em;text-transform:uppercase;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent)}
+
+.btn{border:1px solid var(--line);background:var(--surface);padding:8px 14px;border-radius:8px;cursor:pointer;font-weight:500;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.ok{background:var(--ok);border-color:var(--ok);color:var(--surface)}
+.btn.bad{color:var(--bad);border-color:var(--bad)}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--accent);padding-inline:6px}
+.btn.sm{padding:4px 10px;font-size:13px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+
+.ledger{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));background:var(--surface);border:1px solid var(--line);border-radius:12px}
+.ledger > div{padding:14px 18px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.ledger > div + div{border-left:1px solid var(--line)}
+.ledger .lab{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.ledger .val{font-family:var(--f-mono);font-variant-numeric:tabular-nums;font-size:20px;font-weight:500;overflow-wrap:anywhere}
+.ledger .sub{font-size:12px;color:var(--muted)}
+.ledger .you .val{color:var(--accent)}
+@media (max-width:720px){.ledger{grid-template-columns:repeat(2,minmax(0,1fr))}.ledger > div:nth-child(3){border-left:0}.ledger > div:nth-child(n+3){border-top:1px solid var(--line)}}
+
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);overflow-x:auto}
+.tab{background:none;border:0;padding:10px 14px;cursor:pointer;color:var(--muted);font-weight:500;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;display:flex;gap:6px;align-items:center}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.badge{font-family:var(--f-mono);font-size:11px;background:var(--accent);color:var(--accent-ink);border-radius:999px;padding:0 7px;line-height:18px}
+
+.panel{display:flex;flex-direction:column;gap:14px}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.toolbar .grow{flex:1 1 220px;min-width:0}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field label,.flabel{font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.02em}
+input[type=text],input[type=number],input[type=date],input[type=email],input[type=search],input[type=url],select,textarea{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-width:0}
+input[readonly]{background:var(--sunk)}
+textarea{resize:vertical;min-height:72px}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px var(--accent-soft)}
+.hint{font-size:12px;color:var(--muted)}
+.hint.good{color:var(--ok)} .hint.alert{color:var(--warn)}
+.err{font-size:12px;color:var(--bad)}
+.check{display:flex;gap:8px;align-items:flex-start;font-size:14px;cursor:pointer}
+.check input{margin-top:4px}
+
+.notice{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:12px 14px;display:flex;gap:12px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
+.notice.warn{background:var(--warn-soft);border-color:transparent}
+.notice p{margin:0}
+
+.tablewrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:12px}
+table{border-collapse:collapse;width:100%;min-width:1120px}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;background:var(--sunk);vertical-align:middle}
+tbody tr:last-child td{border-bottom:0}
+tbody tr.click{cursor:pointer}
+tbody tr.click:hover{background:var(--sunk)}
+td.r,th.r{text-align:right}
+.cell-main{font-weight:500}
+.cell-sub{font-size:12px;color:var(--muted)}
+.bif{font-size:11.5px;color:var(--muted);font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.group-h{display:flex;align-items:baseline;gap:8px;margin-top:4px}
+
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:2px 9px;border-radius:999px;white-space:nowrap}
+.chip::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.s-pending{background:var(--warn-soft);color:var(--warn)}
+.s-approved{background:var(--ok-soft);color:var(--ok)}
+.s-rejected{background:var(--bad-soft);color:var(--bad)}
+.s-paid{background:var(--paid-soft);color:var(--paid)}
+.s-muted{background:var(--sunk);color:var(--muted)}
+.tag{font-size:11px;font-weight:600;padding:1px 7px;border-radius:5px;background:var(--accent-soft);color:var(--accent);white-space:nowrap}
+.urgent{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--bad)}
+.overdue{color:var(--bad);font-weight:600}
+
+.verdict{display:flex;flex-direction:column;gap:3px;min-width:170px}
+.vlabel{font-weight:700;font-size:13px;display:inline-flex;align-items:center;gap:6px}
+.vlabel::before{content:"";width:9px;height:9px;border-radius:2px;background:currentColor}
+.v-yes{color:var(--ok)} .v-no{color:var(--bad)} .v-wait{color:var(--warn)} .v-paid{color:var(--paid)}
+.vreason{font-size:12px;color:var(--muted);line-height:1.35}
+
+.empty{background:var(--surface);border:1px dashed var(--line);border-radius:12px;padding:28px 20px;text-align:center;display:flex;flex-direction:column;gap:6px;align-items:center}
+.empty p{margin:0;max-width:52ch}
+
+.scrim{position:fixed;inset:0;background:rgba(10,14,12,.45);z-index:20}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(640px,100%);background:var(--bg);z-index:21;box-shadow:var(--shadow);display:flex;flex-direction:column;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);padding-right:env(safe-area-inset-right,0px)}
+.drawer-h{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 20px;border-bottom:1px solid var(--line);background:var(--surface)}
+.drawer-b{overflow-y:auto;padding:18px 20px 28px;display:flex;flex-direction:column;gap:16px;flex:1}
+.drawer-f{padding:12px 20px;border-top:1px solid var(--line);background:var(--surface);display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width:520px){.grid2,.grid3{grid-template-columns:minmax(0,1fr)}.span2{grid-column:auto!important}}
+.span2{grid-column:span 2}
+.sect{display:flex;flex-direction:column;gap:10px}
+.sect-h{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600;border-bottom:1px solid var(--line);padding-bottom:6px;display:flex;justify-content:space-between;gap:8px;align-items:center}
+
+.voucher{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:4px 14px}
+.vrow{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px dashed var(--line)}
+.vrow:last-child{border-bottom:0}
+.vrow .num{text-align:right}
+.vrow.total{border-top:1px solid var(--ink);border-bottom:0;margin-top:2px;padding-top:10px}
+.vrow.total .num{font-size:20px;font-weight:600}
+.kv{display:grid;grid-template-columns:minmax(110px,max-content) minmax(0,1fr);gap:6px 14px;font-size:14px}
+.kv dt{color:var(--muted)} .kv dd{margin:0;overflow-wrap:anywhere}
+.route{display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:13px}
+.step{padding:3px 10px;border-radius:6px;background:var(--sunk);color:var(--muted);font-weight:500}
+.step.done{background:var(--ok-soft);color:var(--ok)}
+.step.now{background:var(--warn-soft);color:var(--warn)}
+.step.stop{background:var(--bad-soft);color:var(--bad)}
+.timeline{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.timeline li{display:grid;grid-template-columns:14px minmax(0,1fr);gap:10px;font-size:14px}
+.timeline .dot{width:10px;height:10px;border-radius:50%;margin-top:6px;background:var(--line)}
+.timeline .dot.ok{background:var(--ok)} .timeline .dot.bad{background:var(--bad)} .timeline .dot.acc{background:var(--accent)}
+.timeline .note{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 10px;margin-top:4px;white-space:pre-wrap}
+.files{display:flex;flex-direction:column;gap:6px}
+.file{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:14px;min-width:0}
+.file a,.file span.fn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.actbox{background:var(--surface);border:1px solid var(--accent);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.readbox{background:var(--accent-soft);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;font-size:14px}
+.readbox table{min-width:0;background:transparent}
+.readbox td,.readbox th{padding:4px 6px;border-bottom:1px solid var(--line);background:transparent}
+
+.checklist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;font-size:14px}
+.checklist li{display:grid;grid-template-columns:20px minmax(0,1fr);gap:8px;align-items:start}
+.mark{width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;margin-top:2px}
+.mark.ok{background:var(--ok-soft);color:var(--ok)} .mark.no{background:var(--bad-soft);color:var(--bad)} .mark.warn{background:var(--warn-soft);color:var(--warn)} .mark.acc{background:var(--accent-soft);color:var(--accent)}
+.vbox{border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:10px;border:1px solid var(--line);background:var(--surface)}
+.vbox.yes{border-color:var(--ok)} .vbox.no{border-color:var(--bad)} .vbox.wait{border-color:var(--warn)}
+
+.rolecard{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.people{display:flex;flex-wrap:wrap;gap:6px}
+.person{display:inline-flex;align-items:center;gap:6px;background:var(--sunk);border-radius:999px;padding:3px 4px 3px 3px;font-size:13px}
+.person img{width:22px;height:22px;border-radius:50%}
+.person button{border:0;background:none;cursor:pointer;color:var(--muted);padding:0 6px;font-size:15px;line-height:1}
+.picker{position:relative}
+.hits{position:absolute;left:0;right:0;top:100%;margin-top:4px;background:var(--surface);border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow);z-index:5;max-height:260px;overflow-y:auto}
+.hit{display:flex;gap:8px;align-items:center;padding:8px 10px;cursor:pointer;width:100%;border:0;background:none;text-align:left}
+.hit:hover,.hit:focus{background:var(--sunk)}
+.hit img{width:24px;height:24px;border-radius:50%}
+.rolegrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width:860px){.rolegrid{grid-template-columns:minmax(0,1fr)}}
+.tdsgrid{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:12px}
+.tdsgrid table{min-width:880px}
+.tdsgrid td{padding:6px 8px;vertical-align:middle}
+.tdsgrid input,.tdsgrid select{padding:6px 8px}
+
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;z-index:40;max-width:min(560px,calc(100% - 32px));font-size:14px;box-shadow:var(--shadow)}
+.toast.bad{background:var(--bad);color:var(--surface)}
+.infobox{background:var(--sunk);border-radius:10px;padding:10px 14px;font-size:14px;display:flex;flex-direction:column;gap:4px}
+.selbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;background:var(--accent-soft);border-radius:10px;padding:10px 14px}
+@media (prefers-reduced-motion:no-preference){.drawer{animation:slide .18s ease-out}@keyframes slide{from{transform:translateX(24px);opacity:.6}to{transform:none;opacity:1}}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <span class="eyebrow">Kenzen Ventures · Accounts</span>
+      <h1>Payment Desk</h1>
+    </div>
+    <div class="who">
+      <span id="who"></span>
+      <button class="btn" id="btn-xlsx" type="button">Download Excel log</button>
+      <button class="btn primary" id="btn-new" type="button">New payment request</button>
+    </div>
+  </header>
+
+  <section class="ledger" aria-label="Totals">
+    <div class="you"><span class="lab">Waiting on you</span><span class="val" id="sum-you">—</span><span class="sub" id="sum-you-sub">&nbsp;</span></div>
+    <div><span class="lab">In approval</span><span class="val" id="sum-pend">—</span><span class="sub" id="sum-pend-sub">&nbsp;</span></div>
+    <div><span class="lab">Ready to pay</span><span class="val" id="sum-appr">—</span><span class="sub" id="sum-appr-sub">&nbsp;</span></div>
+    <div><span class="lab" id="sum-paid-lab">Paid this month</span><span class="val" id="sum-paid">—</span><span class="sub" id="sum-paid-sub">&nbsp;</span></div>
+  </section>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab" role="tab" data-tab="queue" aria-selected="true">For you <span class="badge" id="badge-queue" hidden></span></button>
+    <button class="tab" role="tab" data-tab="all" aria-selected="false">All requests</button>
+    <button class="tab" role="tab" data-tab="pay" aria-selected="false">Payments <span class="badge" id="badge-pay" hidden></span></button>
+    <button class="tab" role="tab" data-tab="payees" aria-selected="false">Payees</button>
+    <button class="tab" role="tab" data-tab="settings" aria-selected="false">Approvals &amp; settings</button>
+  </nav>
+
+  <section class="panel" id="panel-queue">
+    <div id="queue-banner"></div>
+    <div id="queue-body"></div>
+  </section>
+
+  <section class="panel" id="panel-all" hidden>
+    <div class="toolbar">
+      <div class="field grow"><label for="flt-q">Search</label><input type="search" id="flt-q" placeholder="Payee, invoice no., nature, request ID, Instagram handle"></div>
+      <div class="field"><label for="flt-status">Status</label>
+        <select id="flt-status">
+          <option value="all">All statuses</option>
+          <option value="pending">In approval</option>
+          <option value="approved">Approved, unpaid</option>
+          <option value="paid">Paid</option>
+          <option value="rejected">Sent back</option>
+          <option value="withdrawn">Withdrawn</option>
+        </select></div>
+      <div class="field"><label for="flt-verdict">Can be paid?</label>
+        <select id="flt-verdict"><option value="all">Any</option><option value="yes">Yes</option><option value="no">No</option><option value="wait">Not yet</option></select></div>
+      <div class="field"><label for="flt-cc">Cost centre</label><select id="flt-cc"><option value="all">All cost centres</option></select></div>
+    </div>
+    <div id="all-body"></div>
+  </section>
+
+  <section class="panel" id="panel-pay" hidden>
+    <div id="pay-bar"></div>
+    <div id="pay-body"></div>
+    <div class="group-h"><h2>Recently paid</h2><span class="muted small">last 60 days</span></div>
+    <div id="paid-body"></div>
+  </section>
+
+  <section class="panel" id="panel-payees" hidden>
+    <div class="toolbar">
+      <div class="field grow"><label for="payee-q">Search payees</label><input type="search" id="payee-q" placeholder="Name, GSTIN, PAN, IFSC, Instagram handle"></div>
+      <button class="btn" id="btn-add-payee" type="button" style="align-self:flex-end">Add payee</button>
+    </div>
+    <div id="payees-body"></div>
+  </section>
+
+  <section class="panel" id="panel-settings" hidden>
+    <div id="settings-body"></div>
+  </section>
+</div>
+
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer" id="drawer" hidden aria-modal="true" role="dialog" aria-labelledby="drawer-title">
+  <div class="drawer-h"><h2 id="drawer-title"></h2><button class="btn ghost" type="button" id="drawer-close" aria-label="Close">Close</button></div>
+  <div class="drawer-b" id="drawer-body"></div>
+  <div class="drawer-f" id="drawer-foot" hidden></div>
+</aside>
+<div class="toast" id="toast" hidden role="status"></div>
+
+<script>
+(() => {
+"use strict";
+/* ---------- constants ---------- */
+const C194 = {section:"194C", rateInd:1, rateOther:2, single:30000, annual:100000};
+const DEFAULT_NATURES = [
+  {id:"n-whs",  name:"Warehousing & fulfilment charges", ...C194},
+  {id:"n-frt",  name:"Freight, transport & courier", ...C194},
+  {id:"n-job",  name:"Contract manufacturing / job work", ...C194},
+  {id:"n-pkg",  name:"Packaging & printing", ...C194},
+  {id:"n-adv",  name:"Advertising, photoshoots & ad production", ...C194},
+  {id:"n-inf",  name:"Influencer / creator fees", section:"194J", rateInd:10, rateOther:10, single:0, annual:50000, influencer:true},
+  {id:"n-prof", name:"Professional fees (legal, audit, consulting)", section:"194J", rateInd:10, rateOther:10, single:0, annual:50000},
+  {id:"n-tech", name:"Technical services & IT support", section:"194J", rateInd:2, rateOther:2, single:0, annual:50000},
+  {id:"n-rent", name:"Rent – office, warehouse, building", section:"194I", rateInd:10, rateOther:10, single:50000, annual:0},
+  {id:"n-hire", name:"Hire – plant, machinery, vehicles", section:"194I", rateInd:2, rateOther:2, single:50000, annual:0},
+  {id:"n-comm", name:"Commission & brokerage", section:"194H", rateInd:2, rateOther:2, single:0, annual:20000},
+  {id:"n-goods",name:"Raw material / goods purchase", section:"", rateInd:0, rateOther:0, single:0, annual:0},
+  {id:"n-util", name:"Utilities & reimbursements", section:"", rateInd:0, rateOther:0, single:0, annual:0}
+];
+const DEFAULTS = {
+  tierLimit: 50000, companyGstins: [],
+  costCentres: ["Warehousing & logistics","Marketing & ads","Influencer marketing","Raw material","Packaging","Contract manufacturing","Salaries & contractors","Rent & utilities","Software & subscriptions","Professional fees","Other"],
+  natures: DEFAULT_NATURES,
+  roles: {approver1:[], approver2:[], finance:[]}
+};
+const TERMS = [
+  {v:"advance", l:"Advance (before delivery)", days:0},
+  {v:"receipt", l:"On receipt of invoice", days:0},
+  {v:"net7", l:"Net 7 days", days:7},
+  {v:"net15", l:"Net 15 days", days:15},
+  {v:"net30", l:"Net 30 days", days:30},
+  {v:"net45", l:"Net 45 days", days:45},
+  {v:"net60", l:"Net 60 days", days:60},
+  {v:"net90", l:"Net 90 days", days:90},
+  {v:"live", l:"After content goes live", days:null},
+  {v:"custom", l:"Other terms…", days:null}
+];
+const ROLE_INFO = {
+  approver1:{title:"Level 1 approvers", desc:"Approve every request. Any one of them can clear Level 1."},
+  approver2:{title:"Level 2 approvers", desc:"Second sign-off for invoices above the threshold. Must differ from the Level 1 approver."},
+  finance:{title:"Finance (payments)", desc:"Pay approved requests that pass every check, then record the UTR."}
+};
+const IFSC_RE = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+const GSTIN_RE = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
+const PAN_RE = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
+const HANDLE_RE = /^@?[A-Za-z0-9._]{1,30}$/;
+const REEL_RE = /^https?:\/\/(www\.)?instagram\.com\/(reel|reels|p|tv)\/[A-Za-z0-9_-]{5,}\/?(\?.*)?$/i;
+const PDFJS = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/";
+const XLSX_URL = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+
+/* ---------- helpers ---------- */
+const $ = (s, r=document) => r.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const INR = new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR",minimumFractionDigits:2,maximumFractionDigits:2});
+const INR0 = new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR",maximumFractionDigits:0});
+const money = n => INR.format(Number(n)||0);
+const money0 = n => INR0.format(Number(n)||0);
+const r2 = n => Math.round((Number(n)||0)*100)/100;
+const numOrNull = v => { if(v==null||v==="") return null; const n=Number(String(v).replace(/[,₹\s]/g,"")); return isFinite(n)?n:null; };
+const todayISO = () => { const d=new Date(); return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10); };
+const addDays = (iso,n) => { const d=new Date(iso+"T00:00:00"); d.setDate(d.getDate()+n); return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10); };
+const fmtDate = iso => { if(!iso) return "—"; const d=new Date(iso.length===10? iso+"T00:00:00" : iso); return isNaN(d)? "—" : d.toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"}); };
+const fmtWhen = iso => { const d=new Date(iso); return isNaN(d)? "" : d.toLocaleString("en-IN",{day:"numeric",month:"short",year:"numeric",hour:"numeric",minute:"2-digit"}); };
+const xlWhen = iso => { const d=new Date(iso); if(isNaN(d)) return ""; const l=new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString(); return l.slice(0,10)+" "+l.slice(11,16); };
+const rand = n => Array.from(crypto.getRandomValues(new Uint8Array(n)), b => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[b%32]).join("");
+const newReqId = () => `PR-${todayISO().replace(/-/g,"").slice(2)}-${rand(4)}`;
+const last4 = a => a ? "••" + String(a).slice(-4) : "—";
+const normInv = s => String(s||"").toLowerCase().replace(/[^a-z0-9]/g,"");
+const panEntity = pan => { if(!pan || !PAN_RE.test(pan)) return null; const c=pan[3]; return (c==="P"||c==="H") ? "individual" : "other"; };
+const handleClean = h => String(h||"").trim().replace(/^@/,"");
+const termsLabel = r => r.termsCode==="custom" ? (r.termsText||"Other terms") : (TERMS.find(t=>t.v===r.termsCode)?.l || "—");
+const fyOf = iso => { const d=iso||todayISO(); const y=+d.slice(0,4), m=+d.slice(5,7); return m>=4 ? y : y-1; };
+const fyLabel = y => `FY ${y}-${String((y+1)%100).padStart(2,"0")}`;
+const familyId = r => r.parentId || r.id;
+const tdsText = r => r.tdsApplied ? `${r.tdsSectionCode} @ ${r.tdsRate}%` : (r.tdsSectionCode ? `${r.tdsSectionCode}: below threshold` : "No TDS");
+const kindLabel = r => r.kind==="advance" ? "Advance" : r.kind==="balance" ? "Balance" : "Full payment";
+
+const STATUS = {
+  pending_l1:{label:"Awaiting Level 1", cls:"s-pending"},
+  pending_l2:{label:"Awaiting Level 2", cls:"s-pending"},
+  approved:{label:"Approved", cls:"s-approved"},
+  rejected:{label:"Sent back", cls:"s-rejected"},
+  withdrawn:{label:"Withdrawn", cls:"s-muted"},
+  paid:{label:"Paid", cls:"s-paid"}
+};
+const chip = st => { const s=STATUS[st]||{label:st,cls:"s-muted"}; return `<span class="chip ${s.cls}">${esc(s.label)}</span>`; };
+
+/* ---------- state ---------- */
+const S = {
+  db:null, user:null, assets:null, downloads:null, sample:null, sampleImages:false,
+  me:{id:null,name:"",avatarUrl:"",isOwner:false,canEdit:false},
+  isAdmin:false, canWrite:true, offline:false,
+  settings:null, payees:new Map(), requests:[],
+  loaded:{settings:false,payees:false,requests:false},
+  names:{}, tab:"queue", drawer:null, sDraft:null, sDirty:false
+};
+function mergeSettings(d){
+  const x = d || {};
+  const nats = (Array.isArray(x.natures) && x.natures.length ? x.natures : DEFAULT_NATURES).map(n=>({
+    id:String(n.id||("n-"+rand(6).toLowerCase())), name:String(n.name||""), section:String(n.section||"").toUpperCase().trim(),
+    rateInd:Number(n.rateInd)||0, rateOther:Number(n.rateOther)||0, single:Number(n.single)||0, annual:Number(n.annual)||0,
+    influencer:!!n.influencer, inactive:!!n.inactive }));
+  return {
+    tierLimit: Number(x.tierLimit) > 0 ? Number(x.tierLimit) : DEFAULTS.tierLimit,
+    companyGstins: Array.isArray(x.companyGstins) ? x.companyGstins : [],
+    costCentres: Array.isArray(x.costCentres) && x.costCentres.length ? x.costCentres : DEFAULTS.costCentres.slice(),
+    natures: nats,
+    roles: {approver1:[...(x.roles?.approver1||[])], approver2:[...(x.roles?.approver2||[])], finance:[...(x.roles?.finance||[])]}
+  };
+}
+S.settings = mergeSettings(null);
+const natureById = id => S.settings.natures.find(n=>n.id===id);
+const roleIds = r => S.settings.roles?.[r] || [];
+const hasRole = r => !!S.me.id && roleIds(r).includes(S.me.id);
+const myRoles = () => Object.keys(ROLE_INFO).filter(hasRole);
+const nm = id => { if(!id) return "Someone"; const p=S.names[id]; if(p && p.name) return p.isMe ? `${p.name} (you)` : p.name; return id===S.me.id ? "You" : "Someone"; };
+const plainName = id => (S.names[id]?.name) || (id ? "Someone" : "");
+const av = id => S.names[id]?.avatarUrl || "";
+
+/* ---------- TDS from the nature-of-payment master ---------- */
+function tdsPlan(nat, payee, taxable, invDate, opts={}){
+  if(!nat || !nat.section) return {applies:false, rate:0, section:"", prior:0, text:"No TDS for this nature of payment."};
+  const ent = panEntity(payee?.pan);
+  const base = ent==="individual" ? nat.rateInd : nat.rateOther;
+  const noPan = !!payee && !payee.pan;
+  const rate = noPan ? Math.max(base,20) : base;
+  const fy = fyOf(invDate);
+  const prior = payee ? S.requests.filter(r=>
+      r.id!==opts.excludeId && (!opts.before || String(r.createdAt) < opts.before) &&
+      r.payeeId===payee.id && r.kind!=="balance" && !["withdrawn","rejected"].includes(r.status) &&
+      fyOf(r.invoiceDate)===fy && (r.tdsSectionCode||"")===nat.section
+    ).reduce((s,r)=>s+(Number(r.taxable)||0),0) : 0;
+  const t = Number(taxable)||0;
+  const overSingle = nat.single>0 && t>nat.single;
+  const overAnnual = nat.annual>0 && prior+t>nat.annual;
+  const applies = (!nat.single && !nat.annual) || overSingle || overAnnual;
+  const crossing = overAnnual && prior>0 && prior<=nat.annual;
+  let text;
+  if(applies){
+    const why=[]; if(overSingle) why.push(`invoice above the ${money0(nat.single)} limit`); if(overAnnual) why.push(`${fyLabel(fy)} total with this payee ${money0(prior+t)} is above ${money0(nat.annual)}`);
+    text = `${nat.section} @ ${rate}%${noPan?" (20%: no PAN on file)":ent?` (${ent==="individual"?"individual/HUF":"company/firm"} rate)`:""}${why.length?" · "+why.join("; "):""}.`;
+  } else {
+    const parts=[]; if(nat.single) parts.push(`invoice limit ${money0(nat.single)}`); if(nat.annual) parts.push(`${money0(prior+t)} of ${money0(nat.annual)} used in ${fyLabel(fy)}`);
+    text = `Below the ${nat.section} threshold, so no TDS (${parts.join("; ")}).`;
+  }
+  return {applies, rate, section:nat.section, prior, crossing, fy, text};
+}
+
+/* ---------- payment checks ---------- */
+function checks(r){
+  const L=[]; const add=(id,ok,label,reason,sev="block",ovr=true,detail="")=>L.push({id,ok:!!ok,label,reason,sev,ovr,detail});
+  const p=r.payee||{}, cur=S.payees.get(r.payeeId), ex=r.extracted;
+  add("att",(r.attachments||[]).length,"Invoice or PI attached","No invoice or PI attached","block",false);
+  if(cur && (cur.pan||"")!==(p.pan||"")) add("panchg",false,"","Payee PAN changed after submission. Send back to resubmit","block",false);
+  if(p.account){
+    add("bank",/^[0-9]{6,18}$/.test(p.account) && IFSC_RE.test(p.ifsc||""),"Bank details on file and valid","Bank account or IFSC invalid","block",false);
+    if(cur) add("bankchg",(cur.account||"")===p.account && (cur.ifsc||"")===(p.ifsc||""),"Bank details unchanged since submission","Payee bank details changed after submission. Send back to resubmit","block",false);
+  } else add("nobank",false,"","No bank details on file. Confirm the account with the vendor before paying","warn");
+  const fam=familyId(r);
+  const dup=S.requests.find(x=>x.id!==r.id && familyId(x)!==fam && x.payeeId===r.payeeId && normInv(x.invoiceNo)===normInv(r.invoiceNo) && !["withdrawn","rejected"].includes(x.status));
+  add("dup",!dup,"Invoice not already raised or paid",dup?`Duplicate of ${dup.id} (${STATUS[dup.status]?.label})`:"","block",false);
+  add("date",!r.invoiceDate || r.invoiceDate<=todayISO(),"Invoice date isn't in the future","Invoice date is in the future");
+  if(r.kind==="advance") add("adv",Number(r.payGross)>0 && Number(r.payGross)<Number(r.invoiceTotal),`Advance ${money0(r.payGross)} is below the ${r.docType==="pi"?"PI":"invoice"} total`,"Advance amount must be below the invoice total","block",false);
+  if(r.kind==="balance"){ const par=S.requests.find(x=>x.id===r.parentId); add("par",par && par.status==="paid",`Advance ${r.parentId} is paid`,`Advance ${r.parentId} isn't marked paid yet`,"block",false); }
+  if(ex){
+    const diffs=[]; const cmp=(lab,mine,inv)=>{ if(inv!=null && mine!=null && Math.abs(Number(mine)-Number(inv))>1) diffs.push(`${lab}: ${money(inv)} on document, ${money(mine)} entered`); };
+    cmp("Taxable value",r.taxable,ex.taxableValue); cmp("GST",r.gstAmount,ex.totalGst); cmp("Invoice total",r.invoiceTotal,ex.invoiceTotal);
+    add("amt",!diffs.length,"Amounts match the document","Amounts don't match the document","block",true,diffs.join("; "));
+    if(ex.invoiceNo) add("invno",normInv(ex.invoiceNo)===normInv(r.invoiceNo),"Invoice number matches the document",`Invoice no. on document is ${ex.invoiceNo}`);
+    if(ex.sellerGstin && p.gstin) add("gstin",ex.sellerGstin===p.gstin,"Vendor GSTIN on document matches payee",`GSTIN on document (${ex.sellerGstin}) differs from payee (${p.gstin})`);
+    const cg=S.settings.companyGstins||[];
+    if(ex.buyerGstin && cg.length) add("buyer",cg.includes(ex.buyerGstin),"Billed to a Kenzen GSTIN",`Billed to ${ex.buyerGstin}, not a Kenzen GSTIN`,"warn");
+  } else add("read",false,"","Document not read yet, so amounts weren't compared","warn");
+  if(Number(r.gstAmount)>0) add("gstreg",!!p.gstin,"Payee GSTIN on file (GST is charged)","GST charged but payee has no GSTIN");
+  const nat = r.natureId && r.natureId!=="other" ? natureById(r.natureId) : null;
+  if(r.kind==="balance"){
+    const par=S.requests.find(x=>x.id===r.parentId);
+    if(par && par.tdsApplied) add("tdsbal",r.tdsApplied && Number(r.tdsRate)>=Number(par.tdsRate),"TDS matches the advance",`TDS should stay at ${par.tdsSectionCode} @ ${par.tdsRate}% as on the advance`);
+  } else if(nat){
+    const pl=tdsPlan(nat,{id:r.payeeId,pan:p.pan},r.taxable,r.invoiceDate,{excludeId:r.id,before:r.createdAt});
+    if(pl.applies) add("tds",r.tdsApplied && Number(r.tdsRate)+1e-9>=pl.rate,`TDS ${pl.section} @ ${pl.rate}% applied`,`TDS should be ${pl.section} @ ${pl.rate}% (${r.tdsApplied?`${r.tdsRate}% used`:"none deducted"})`,"block",true,pl.text);
+    else if(r.tdsApplied) add("tdsx",false,"",`TDS deducted although below the ${pl.section} threshold`,"warn",true,pl.text);
+    else add("tds",true,pl.section?`Below ${pl.section} threshold, no TDS needed`:"No TDS for this nature","", "block");
+    if(pl.applies && pl.crossing) add("cross",false,"",`This invoice crosses the ${fyLabel(pl.fy)} limit. TDS on earlier invoices this year (${money0(pl.prior)}) may also be due`,"warn");
+  } else add("natm",false,"","Nature of payment isn't in the master. TDS was set by hand","warn");
+  if(r.isInfluencer){
+    add("ighandle",HANDLE_RE.test(r.igHandle||""),"Instagram handle given","Instagram handle missing","block",false);
+    add("reel",REEL_RE.test(r.reelLink||""),"Reel link is a valid Instagram reel/post link","Reel link missing or not an Instagram reel link","block",false);
+    add("reelok",!!r.reelCheckedBy,"Reel opened and confirmed live by an approver","Reel not yet confirmed live by an approver","block",false);
+  }
+  return L;
+}
+const passes = (c,r) => c.ok || (c.ovr && r.overrides && r.overrides[c.id]);
+const balanceLeft = r => r2((Number(r.invoiceTotal)||0) - (Number(r.payGross)||0));
+function verdict(r){
+  if(r.status==="paid"){
+    const rs=[`UTR ${r.utr||"—"} · ${fmtDate(r.paidOn)}`];
+    if(r.kind==="advance") rs.push(r.balanceId ? `Balance raised on ${r.balanceId}` : `Balance ${money0(balanceLeft(r))} not raised yet`);
+    return {k:"paid", label:r.kind==="advance"?"Advance paid":"Paid", reasons:rs};
+  }
+  if(r.status==="withdrawn") return {k:"no", label:"No", reasons:["Request withdrawn"]};
+  const fails=checks(r).filter(c=>c.sev==="block" && !passes(c,r));
+  let reasons=fails.filter(c=>c.id!=="reelok" || !["pending_l1","pending_l2"].includes(r.status)).map(c=>c.reason);
+  if(r.status==="rejected") reasons.unshift("Sent back to the requester");
+  if(reasons.length) return {k:"no", label:"No", reasons};
+  if(r.status==="pending_l1") return {k:"wait", label:"Not yet", reasons:["Awaiting Level 1 approval"+(r.isInfluencer&&!r.reelCheckedBy?" and reel check":"")]};
+  if(r.status==="pending_l2") return {k:"wait", label:"Not yet", reasons:["Awaiting Level 2 approval"]};
+  const due = r.dueDate && r.dueDate>todayISO() ? `Due ${fmtDate(r.dueDate)}` : "Due now";
+  return {k:"yes", label:"Yes", reasons:[`All checks passed · ${due}`]};
+}
+function verdictHTML(r, full){
+  const v=verdict(r); const cls={yes:"v-yes",no:"v-no",wait:"v-wait",paid:"v-paid"}[v.k];
+  const shown = full ? v.reasons : v.reasons.slice(0,2);
+  return `<div class="verdict"><span class="vlabel ${cls}">${esc(v.label)}</span>${shown.map(x=>`<span class="vreason">${esc(x)}</span>`).join("")}${!full && v.reasons.length>2?`<span class="vreason">+${v.reasons.length-2} more</span>`:""}</div>`;
+}
+const canRaiseBalance = r => S.canWrite && !!S.me.id && r.status==="paid" && r.kind==="advance" && !r.balanceId && (r.requestedBy===S.me.id || S.isAdmin);
+function myAction(r){
+  const me=S.me.id; if(!me || !S.canWrite) return null;
+  if(r.status==="pending_l1" && hasRole("approver1") && r.requestedBy!==me) return "approve";
+  if(r.status==="pending_l2" && hasRole("approver2") && r.requestedBy!==me && r.l1By!==me) return "approve";
+  if(r.status==="approved" && hasRole("finance")) return "pay";
+  if(r.status==="rejected" && r.requestedBy===me) return "fix";
+  if(r.status==="paid" && r.kind==="advance" && !r.balanceId && r.requestedBy===me) return "balance";
+  return null;
+}
+const canEditTerms = r => S.canWrite && (hasRole("approver1")||hasRole("approver2")) && ["pending_l1","pending_l2","approved"].includes(r.status);
+function waitingOn(r){
+  if(r.status==="pending_l1") return roleIds("approver1").filter(id=>id!==r.requestedBy);
+  if(r.status==="pending_l2") return roleIds("approver2").filter(id=>id!==r.requestedBy && id!==r.l1By);
+  if(r.status==="approved") return roleIds("finance");
+  if(r.status==="rejected") return [r.requestedBy];
+  return [];
+}
+const isOverdue = r => r.dueDate && r.dueDate < todayISO() && ["pending_l1","pending_l2","approved"].includes(r.status);
+
+/* ---------- toast & errors ---------- */
+let toastT;
+function toast(msg, kind){ const t=$("#toast"); t.textContent=msg; t.className="toast"+(kind==="bad"?" bad":""); t.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>t.hidden=true, 5000); }
+function writeErr(e){
+  const c=e && e.code;
+  if(c==="invalid_argument") return "You don't have permission to change this. Ask the page owner for Contributor access.";
+  if(c==="quota_exceeded") return "Storage for this desk is full. Ask the owner to clear old records.";
+  if(c==="unavailable") return "Couldn't reach the server. Check your connection and try again.";
+  return (e && e.message) || "Something went wrong saving that.";
+}
+
+/* ---------- invoice reading ---------- */
+const scriptCache={};
+function loadScript(src){ if(!scriptCache[src]) scriptCache[src]=new Promise((res,rej)=>{ const s=document.createElement("script"); s.src=src; s.onload=res; s.onerror=()=>{ delete scriptCache[src]; rej(new Error("load failed")); }; document.head.appendChild(s); }); return scriptCache[src]; }
+async function loadPdf(){ await loadScript(PDFJS+"pdf.min.js"); window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS+"pdf.worker.min.js"; return window.pdfjsLib; }
+async function pdfToInputs(blob){
+  const lib=await loadPdf();
+  const doc=await lib.getDocument({data:new Uint8Array(await blob.arrayBuffer())}).promise;
+  let text=""; const n=Math.min(doc.numPages,3);
+  for(let i=1;i<=n;i++){ const pg=await doc.getPage(i); const tc=await pg.getTextContent(); text += tc.items.map(it=>it.str).join(" ")+"\n"; }
+  let images=[];
+  if(S.sampleImages){
+    const pg=await doc.getPage(1); const vp0=pg.getViewport({scale:1}); const vp=pg.getViewport({scale:Math.min(2.5,1600/vp0.width)});
+    const c=document.createElement("canvas"); c.width=Math.floor(vp.width); c.height=Math.floor(vp.height);
+    const ctx=c.getContext("2d"); ctx.fillStyle="#ffffff"; ctx.fillRect(0,0,c.width,c.height);
+    await pg.render({canvasContext:ctx, viewport:vp}).promise;
+    const img=await new Promise(res=>c.toBlob(res,"image/png")); if(img) images=[img];
+  }
+  return {text, images};
+}
+const INVOICE_PROMPT = `You are an accounts assistant at an Indian company checking a vendor's tax invoice or proforma invoice (PI) before payment.
+Read the document and reply with only one JSON object, no other text, in exactly this shape:
+{"documentType": "tax_invoice"|"proforma"|"other", "invoiceNo": string|null, "invoiceDate": "YYYY-MM-DD"|null, "sellerName": string|null, "sellerGstin": string|null, "buyerName": string|null, "buyerGstin": string|null,
+ "taxableValue": number|null, "cgst": number|null, "sgst": number|null, "igst": number|null, "cess": number|null, "totalGst": number|null, "invoiceTotal": number|null,
+ "natureOfPayment": string|null, "lineSummary": string|null, "confidence": "high"|"medium"|"low", "notes": string|null}
+Rules: amounts are plain numbers in rupees (no commas, no currency symbol). taxableValue is the total value before GST. totalGst = CGST + SGST + IGST + cess.
+invoiceTotal is the grand total on the document including GST and before any TDS (ignore round-off lines if the grand total is given).
+natureOfPayment is 3 to 8 plain words for what is being billed, e.g. "warehousing and fulfilment charges" or "instagram reel promotion".
+GSTINs are 15 characters, uppercase. Use null for anything not on the document. In notes, mention anything an approver should check (e.g. amounts that don't add up, missing GSTIN, reverse charge, advance terms).`;
+async function readInvoice(blob, type){
+  if(!S.sample) throw {code:"no_sample"};
+  let text="", images=[];
+  if(type==="application/pdf"){ try{ ({text,images}=await pdfToInputs(blob)); }catch(_){ throw {code:"pdf_failed"}; } }
+  else if(S.sampleImages) images=[blob];
+  if(!images.length && text.trim().length<60) throw {code: type==="application/pdf"?"scanned_no_image":"no_images"};
+  const prompt = INVOICE_PROMPT + (text.trim()?`\n\nText extracted from the PDF (layout may be jumbled):\n"""\n${text.slice(0,15000)}\n"""`:"") + (images.length?"\n\nAn image of the document's first page is attached.":"");
+  const opts={modelTier:"default"}; if(images.length) opts.images=images;
+  const j = await S.sample.json(prompt, opts);
+  if(!j || typeof j!=="object") throw {code:"invalid_json"};
+  const ex = {
+    documentType: ["tax_invoice","proforma","other"].includes(j.documentType)?j.documentType:null,
+    invoiceNo: j.invoiceNo ? String(j.invoiceNo).trim() : null,
+    invoiceDate: /^\d{4}-\d{2}-\d{2}$/.test(j.invoiceDate||"") ? j.invoiceDate : null,
+    sellerName: j.sellerName||null, sellerGstin: j.sellerGstin ? String(j.sellerGstin).toUpperCase().replace(/\s/g,"") : null,
+    buyerName: j.buyerName||null, buyerGstin: j.buyerGstin ? String(j.buyerGstin).toUpperCase().replace(/\s/g,"") : null,
+    taxableValue:numOrNull(j.taxableValue), cgst:numOrNull(j.cgst), sgst:numOrNull(j.sgst), igst:numOrNull(j.igst), cess:numOrNull(j.cess),
+    totalGst:numOrNull(j.totalGst), invoiceTotal:numOrNull(j.invoiceTotal),
+    natureOfPayment: j.natureOfPayment||null, lineSummary: j.lineSummary||null,
+    confidence: ["high","medium","low"].includes(j.confidence)?j.confidence:"medium", notes: j.notes||null, at:new Date().toISOString()
+  };
+  if(ex.totalGst==null && [ex.cgst,ex.sgst,ex.igst].some(v=>v!=null)) ex.totalGst=r2((ex.cgst||0)+(ex.sgst||0)+(ex.igst||0)+(ex.cess||0));
+  if(ex.invoiceTotal==null && ex.taxableValue!=null && ex.totalGst!=null) ex.invoiceTotal=r2(ex.taxableValue+ex.totalGst);
+  return ex;
+}
+function readErr(e){
+  const c=e && e.code;
+  if(c==="no_sample"||c==="not_granted"||c==="sampling_disabled"||c==="capability_disabled") return "Document reading isn't available here. Enter the amounts yourself.";
+  if(c==="pdf_failed") return "Couldn't open that PDF. Enter the amounts yourself, or attach a clearer copy.";
+  if(c==="scanned_no_image"||c==="no_images") return "This looks like a scanned document and image reading isn't available here. Enter the amounts yourself.";
+  if(c==="rate_limited") return "Too many reads just now. Try again in a minute.";
+  if(c==="invalid_json"||c==="empty_completion") return "Couldn't make sense of that document. Try again, or enter the amounts yourself.";
+  if(c==="cancelled") return "";
+  return "Document reading failed. Try again, or enter the amounts yourself.";
+}
+async function blobForAttachment(a){
+  if(S.drawer?.blobs?.[a.id]) return S.drawer.blobs[a.id];
+  const res=await fetch("/_blob/"+a.id); if(!res.ok) throw {code:"fetch_failed"}; return await res.blob();
+}
+function readTableHTML(ex, mine){
+  const row=(lab,inv,m)=>{ const bad = inv!=null && m!=null && Math.abs(Number(inv)-Number(m))>1; return `<tr><td>${lab}</td><td class="r num">${inv==null?"—":esc(money(inv))}</td>${mine?`<td class="r num" style="${bad?"color:var(--bad);font-weight:600":""}">${m==null?"—":esc(money(m))}</td>`:""}</tr>`; };
+  const gstParts=[ex.cgst!=null?`CGST ${money(ex.cgst)}`:"",ex.sgst!=null?`SGST ${money(ex.sgst)}`:"",ex.igst!=null?`IGST ${money(ex.igst)}`:""].filter(Boolean).join(" · ");
+  return `<table><thead><tr><th></th><th class="r">On document</th>${mine?`<th class="r">Entered</th>`:""}</tr></thead><tbody>
+    ${row("Taxable value",ex.taxableValue,mine?.taxable)}${row("GST",ex.totalGst,mine?.gstAmount)}${row("Invoice total",ex.invoiceTotal,mine?.invoiceTotal)}</tbody></table>
+    ${gstParts?`<span class="hint">${esc(gstParts)}</span>`:""}
+    <span class="hint">${[ex.documentType==="proforma"?"Proforma invoice":ex.documentType==="tax_invoice"?"Tax invoice":"", ex.invoiceNo?`No. ${ex.invoiceNo}`:"", ex.invoiceDate?fmtDate(ex.invoiceDate):"", ex.sellerGstin?`Vendor GSTIN ${ex.sellerGstin}`:"", ex.buyerGstin?`Billed to ${ex.buyerGstin}`:""].filter(Boolean).map(esc).join(" · ")}</span>
+    ${ex.lineSummary?`<span class="hint">${esc(ex.lineSummary)}</span>`:""}
+    ${ex.notes?`<span class="hint alert">${esc(ex.notes)}</span>`:""}
+    <span class="hint">Read ${esc(fmtWhen(ex.at))} · confidence ${esc(ex.confidence)}</span>`;
+}
+
+/* ---------- rendering ---------- */
+let renderQueued=false, renderSeq=0;
+function schedule(){ if(renderQueued) return; renderQueued=true; requestAnimationFrame(()=>{ renderQueued=false; render(); }); }
+async function resolveNames(){
+  if(!S.user) return;
+  const ids=new Set(); if(S.me.id) ids.add(S.me.id);
+  for(const r of S.requests){ [r.requestedBy,r.l1By,r.l2By,r.paidBy,r.reelCheckedBy].forEach(i=>i&&ids.add(i)); (r.history||[]).forEach(h=>h.by&&ids.add(h.by)); Object.values(r.overrides||{}).forEach(o=>o.by&&ids.add(o.by)); }
+  for(const p of S.payees.values()){ [p.createdBy,p.bankChangedBy].forEach(i=>i&&ids.add(i)); }
+  Object.values(S.settings.roles).flat().forEach(i=>ids.add(i));
+  if(S.sDraft) Object.values(S.sDraft.roles).flat().forEach(i=>ids.add(i));
+  try{ S.names = await S.user.profiles([...ids]); }catch(_){}
+}
+async function render(){
+  const seq=++renderSeq;
+  await resolveNames();
+  if(seq!==renderSeq) return;
+  renderWho(); renderLedger(); renderTabs();
+  const t=S.tab;
+  if(t==="queue") renderQueue();
+  if(t==="all") renderAll();
+  if(t==="pay") renderPay();
+  if(t==="payees") renderPayees();
+  if(t==="settings" && !S.sDirty) renderSettings();
+  if(S.drawer && S.drawer.mode==="detail") renderDetail(true);
+}
+function renderWho(){
+  const w=$("#who");
+  $("#btn-xlsx").hidden = S.offline || !S.downloads;
+  if(S.offline){ w.innerHTML=`<span class="muted small">Not connected to the desk's storage. Reload the page.</span>`; $("#btn-new").hidden=true; $("#btn-add-payee").hidden=true; return; }
+  if(!S.me.id){ w.innerHTML=`<span class="muted small">Sign in to raise or approve requests.</span>`; return; }
+  const roles=myRoles().map(r=>`<span class="rolechip">${r==="approver1"?"L1":r==="approver2"?"L2":"Finance"}</span>`).join("");
+  w.innerHTML=`<span class="who"><img class="avatar" alt="" src="${esc(S.me.avatarUrl)}"><span class="small">${esc(S.me.name||"You")}</span>${roles}${S.canWrite?"":`<span class="rolechip">View only</span>`}</span>`;
+  $("#btn-new").hidden = !S.canWrite || !S.me.id;
+}
+function renderLedger(){
+  const pend=S.requests.filter(r=>r.status==="pending_l1"||r.status==="pending_l2");
+  const appr=S.requests.filter(r=>r.status==="approved");
+  const ready=appr.filter(r=>verdict(r).k==="yes");
+  const mine=S.requests.filter(r=>myAction(r));
+  const mon=todayISO().slice(0,7);
+  const paid=S.requests.filter(r=>r.status==="paid" && (r.paidOn||"").slice(0,7)===mon);
+  const sum=a=>a.reduce((s,r)=>s+(Number(r.netPayable)||0),0);
+  const ok=S.loaded.requests;
+  $("#sum-you").textContent = ok? String(mine.length) : "—";
+  $("#sum-you-sub").textContent = ok? (mine.length? `${mine.length} item${mine.length===1?"":"s"} to action` : "Nothing to action") : "Loading…";
+  $("#sum-pend").textContent = ok? money0(sum(pend)) : "—";
+  $("#sum-pend-sub").textContent = ok? `${pend.length} request${pend.length===1?"":"s"}` : " ";
+  $("#sum-appr").textContent = ok? money0(sum(ready)) : "—";
+  $("#sum-appr-sub").textContent = ok? `${ready.length} cleared${appr.length>ready.length?` · ${appr.length-ready.length} on hold`:""}` : " ";
+  $("#sum-paid-lab").textContent = `Paid in ${new Date().toLocaleDateString("en-IN",{month:"long"})}`;
+  $("#sum-paid").textContent = ok? money0(sum(paid)) : "—";
+  $("#sum-paid-sub").textContent = ok? `${paid.length} payment${paid.length===1?"":"s"}` : " ";
+}
+function renderTabs(){
+  document.querySelectorAll(".tab").forEach(b=>b.setAttribute("aria-selected", String(b.dataset.tab===S.tab)));
+  ["queue","all","pay","payees","settings"].forEach(t=>$("#panel-"+t).hidden = t!==S.tab);
+  const q=S.requests.filter(r=>myAction(r)).length; const bq=$("#badge-queue"); bq.hidden=!q; bq.textContent=q;
+  const p=S.requests.filter(r=>r.status==="approved").length; const bp=$("#badge-pay"); bp.hidden=!p; bp.textContent=p;
+}
+function amountCell(r){
+  let sub;
+  if(r.kind==="advance") sub=`<div class="bif">Advance of ${esc(money0(r.invoiceTotal))}</div><div class="bif">Paying ${esc(money0(r.payGross))} − TDS ${esc(money0(r.payTds))}</div>`;
+  else if(r.kind==="balance") sub=`<div class="bif">Balance of ${esc(money0(r.invoiceTotal))}</div><div class="bif">Paying ${esc(money0(r.payGross))} − TDS ${esc(money0(r.payTds))}</div>`;
+  else sub=`<div class="bif">Taxable ${esc(money0(r.taxable))}</div><div class="bif">+ GST ${esc(money0(r.gstAmount))}</div><div class="bif">− TDS ${esc(money0(r.tdsAmount))}</div>`;
+  return `<div class="cell-main num">${esc(money(r.netPayable))}</div>${sub}`;
+}
+function reqTable(rows){
+  if(!rows.length) return "";
+  const body=rows.map(r=>{
+    const due = r.dueDate ? `<span class="${isOverdue(r)?"overdue":""}">Due ${esc(fmtDate(r.dueDate))}${isOverdue(r)?" · overdue":""}</span>` : "";
+    return `<tr class="click" data-open="${esc(r.id)}" tabindex="0">
+      <td><div class="cell-main mono">${esc(r.id)}</div><div class="cell-sub">${esc(fmtDate(r.createdAt))} · ${esc(nm(r.requestedBy))}</div>${r.kind&&r.kind!=="full"?`<span class="tag">${kindLabel(r)}</span>`:""}${r.priority==="urgent"?`<div class="urgent">Urgent</div>`:""}</td>
+      <td style="min-width:180px"><div class="cell-main">${esc(r.payee?.name||"—")}</div><div class="cell-sub">${r.docType==="pi"?"PI":"Inv"} ${esc(r.invoiceNo||"—")} · ${esc(r.costCentre||"")}</div>${r.isInfluencer?`<div class="cell-sub">@${esc(handleClean(r.igHandle))}</div>`:""}</td>
+      <td style="min-width:190px"><div>${esc(r.nature||"—")}</div><div class="cell-sub">${esc(tdsText(r))}</div>${r.isInfluencer?`<span class="tag">Influencer</span>`:""}</td>
+      <td style="min-width:150px"><div>${esc(termsLabel(r))}</div><div class="cell-sub">${due||"—"}</div></td>
+      <td class="r" style="min-width:200px">${amountCell(r)}</td>
+      <td>${chip(r.status)}${waitingOn(r).length && !["paid","withdrawn"].includes(r.status) ? `<div class="cell-sub">${esc(waitingOn(r).map(nm).slice(0,2).join(", "))}${waitingOn(r).length>2?" +"+(waitingOn(r).length-2):""}</div>`:""}</td>
+      <td>${verdictHTML(r)}</td>
+    </tr>`;}).join("");
+  return `<div class="tablewrap"><table><thead><tr><th>Request</th><th>Payee &amp; document</th><th>Nature of payment</th><th>Terms of payment</th><th class="r">Net payable</th><th>Status</th><th>Can be paid?</th></tr></thead><tbody>${body}</tbody></table></div>`;
+}
+function emptyBox(title, text, btn){ return `<div class="empty"><h3>${esc(title)}</h3><p class="muted">${text}</p>${btn||""}</div>`; }
+
+function renderQueue(){
+  const banner=$("#queue-banner"), body=$("#queue-body");
+  if(S.offline){ banner.innerHTML=""; body.innerHTML=emptyBox("Not connected","The desk couldn't reach its storage, so requests can't load and nothing can be saved. Reload the page. If it keeps happening, open it from your Artifacts gallery on claude.ai."); return; }
+  if(!S.loaded.requests){ banner.innerHTML=""; body.innerHTML=emptyBox("Loading requests…",""); return; }
+  const noRoles = !roleIds("approver1").length || !roleIds("finance").length;
+  banner.innerHTML = noRoles ? `<div class="notice warn"><p>${S.isAdmin
+      ? "Approvers and finance aren't assigned yet, so new requests will wait. Assign people under <strong>Approvals &amp; settings</strong>."
+      : "Approvers haven't been assigned yet. Requests you raise will wait until the owner sets them up."}</p>${S.isAdmin?`<button class="btn" type="button" data-goto="settings">Assign people</button>`:""}</div>` : "";
+  const mine=S.requests.filter(r=>myAction(r));
+  const groups=[
+    ["approve","To approve","Requests at your approval level that someone else raised. Check the “Can be paid?” column before approving."],
+    ["pay","To pay","Approved requests. Pay only those marked Yes, then record the UTR."],
+    ["balance","Balances to raise","Advances you raised that are now paid. Open one and raise the balance when it's due. It goes through approval again."],
+    ["fix","Sent back to you","An approver returned these. Open one to see why, edit it and resubmit."]
+  ];
+  let html="";
+  for(const [k,t,d] of groups){
+    const rows=mine.filter(r=>myAction(r)===k).sort((a,b)=>(b.priority==="urgent")-(a.priority==="urgent") || String(a.dueDate||"9").localeCompare(String(b.dueDate||"9")));
+    if(rows.length) html+=`<div class="group-h"><h2>${t}</h2><span class="muted small">${rows.length}${k==="balance"?` · ${esc(money0(rows.reduce((s,r)=>s+balanceLeft(r),0)))} remaining`:` · ${esc(money0(rows.reduce((s,r)=>s+(+r.netPayable||0),0)))}`}</span></div><p class="muted small" style="margin:-8px 0 0">${d}</p>${reqTable(rows)}`;
+  }
+  const myOpen=S.requests.filter(r=>r.requestedBy===S.me.id && ["pending_l1","pending_l2","approved"].includes(r.status));
+  if(myOpen.length) html+=`<div class="group-h"><h2>Raised by you, in progress</h2><span class="muted small">${myOpen.length}</span></div>${reqTable(myOpen)}`;
+  if(!html){
+    html = S.requests.length
+      ? emptyBox("You're all caught up","Nothing needs your action right now. Everything else is under <strong>All requests</strong>.")
+      : emptyBox("No payment requests yet","Raise the first one with the vendor's invoice or PI attached. The desk reads it, works out GST and TDS from the nature of payment, and sends it to Level 1 approval (then Level 2 above "+esc(money0(S.settings.tierLimit))+").",
+          S.canWrite && S.me.id ? `<button class="btn primary" type="button" data-new>New payment request</button>` : "");
+  }
+  body.innerHTML=html;
+}
+function renderAll(){
+  const sel=$("#flt-cc"), cur=sel.value;
+  const ccs=[...new Set([...S.settings.costCentres, ...S.requests.map(r=>r.costCentre).filter(Boolean)])];
+  sel.innerHTML=`<option value="all">All cost centres</option>`+ccs.map(c=>`<option ${c===cur?"selected":""}>${esc(c)}</option>`).join("");
+  const q=$("#flt-q").value.trim().toLowerCase(), st=$("#flt-status").value, cc=sel.value, vd=$("#flt-verdict").value;
+  const rows=S.requests.filter(r=>{
+    if(st==="pending" && !["pending_l1","pending_l2"].includes(r.status)) return false;
+    if(!["all","pending"].includes(st) && r.status!==st) return false;
+    if(cc!=="all" && r.costCentre!==cc) return false;
+    if(vd!=="all" && verdict(r).k!==vd) return false;
+    if(q){ const hay=[r.id,r.payee?.name,r.invoiceNo,r.description,r.nature,r.costCentre,r.igHandle,r.parentId].join(" ").toLowerCase(); if(!hay.includes(q)) return false; }
+    return true;
+  });
+  const total=rows.reduce((s,r)=>s+(+r.netPayable||0),0);
+  $("#all-body").innerHTML = !S.loaded.requests ? emptyBox("Loading requests…","") :
+    rows.length ? `<p class="muted small" style="margin:0">${rows.length} request${rows.length===1?"":"s"} · net ${esc(money(total))}</p>${reqTable(rows)}`
+    : emptyBox(S.requests.length?"No requests match":"No payment requests yet", S.requests.length?"Try a different search or filter.":"Requests appear here once someone raises one.");
+}
+function renderPay(){
+  const fin = hasRole("finance") && S.canWrite;
+  const appr=S.requests.filter(r=>r.status==="approved").sort((a,b)=>String(a.dueDate||"9").localeCompare(String(b.dueDate||"9")));
+  const payable=appr.filter(r=>verdict(r).k==="yes");
+  $("#pay-bar").innerHTML = fin
+    ? `<div class="selbar"><span><strong>${payable.length}</strong> ready to pay · <span class="num">${esc(money(payable.reduce((s,r)=>s+(+r.netPayable||0),0)))}</span>${appr.length>payable.length?` <span class="muted small">· ${appr.length-payable.length} on hold</span>`:""}</span><span class="muted small">Open a request to record its UTR once paid.</span></div>`
+    : `<div class="notice"><p class="muted">Only people in the Finance role can mark payments as paid.</p></div>`;
+  if(!S.loaded.requests){ $("#pay-body").innerHTML=emptyBox("Loading…",""); $("#paid-body").innerHTML=""; return; }
+  $("#pay-body").innerHTML = appr.length ? `<div class="tablewrap"><table style="min-width:980px"><thead><tr><th>Request</th><th>Payee</th><th>Bank details</th><th>Terms of payment</th><th class="r">Net payable</th><th>Can be paid?</th></tr></thead><tbody>${
+    appr.map(r=>`<tr class="click" data-open="${esc(r.id)}" tabindex="0">
+      <td><div class="cell-main mono">${esc(r.id)}</div><div class="cell-sub">${r.docType==="pi"?"PI":"Inv"} ${esc(r.invoiceNo)}</div>${r.kind&&r.kind!=="full"?`<span class="tag">${kindLabel(r)}</span>`:""}${r.priority==="urgent"?`<div class="urgent">Urgent</div>`:""}</td>
+      <td><div class="cell-main">${esc(r.payee?.name)}</div><div class="cell-sub">${esc(r.nature||"")}</div></td>
+      <td>${r.payee?.account?`<div class="small">${esc(r.payee.beneficiary||"")}</div><div class="cell-sub mono">${esc(r.payee.ifsc)} · ${esc(last4(r.payee.account))}</div>`:`<span class="cell-sub">Not on file</span>`}</td>
+      <td><div>${esc(termsLabel(r))}</div><div class="cell-sub">${r.dueDate?`<span class="${isOverdue(r)?"overdue":""}">Due ${esc(fmtDate(r.dueDate))}</span>`:"—"}</div></td>
+      <td class="r">${amountCell(r)}</td>
+      <td>${verdictHTML(r)}</td></tr>`).join("")
+  }</tbody></table></div>` : emptyBox("Nothing waiting to be paid","Fully approved requests land here.");
+  const cutoff=new Date(Date.now()-60*864e5).toISOString().slice(0,10);
+  const paid=S.requests.filter(r=>r.status==="paid" && (r.paidOn||"")>=cutoff).sort((a,b)=>String(b.paidOn).localeCompare(String(a.paidOn)));
+  $("#paid-body").innerHTML = paid.length ? `<div class="tablewrap"><table style="min-width:760px"><thead><tr><th>Paid on</th><th>Request</th><th>Payee</th><th>UTR</th><th class="r">Amount</th></tr></thead><tbody>${
+    paid.map(r=>`<tr class="click" data-open="${esc(r.id)}" tabindex="0"><td>${esc(fmtDate(r.paidOn))}</td><td class="mono">${esc(r.id)}${r.kind&&r.kind!=="full"?` <span class="tag">${kindLabel(r)}</span>`:""}</td><td>${esc(r.payee?.name)}</td><td class="mono small">${esc(r.utr)}</td><td class="r num">${esc(money(r.netPayable))}</td></tr>`).join("")
+  }</tbody></table></div>` : `<p class="muted small" style="margin:0">No payments recorded in the last 60 days.</p>`;
+}
+function renderPayees(){
+  const q=$("#payee-q").value.trim().toLowerCase();
+  $("#btn-add-payee").hidden = !S.canWrite || !S.me.id;
+  const list=[...S.payees.values()].filter(p=>!q || [p.name,p.gstin,p.pan,p.igHandle,p.email,p.ifsc,p.beneficiary].join(" ").toLowerCase().includes(q)).sort((a,b)=>String(a.name).localeCompare(String(b.name)));
+  if(!S.loaded.payees){ $("#payees-body").innerHTML=emptyBox("Loading payees…",""); return; }
+  if(!list.length){ $("#payees-body").innerHTML = emptyBox(S.payees.size?"No payees match":"No payees yet", S.payees.size?"Try another search.":"Add each vendor or influencer once with their GSTIN and PAN, and bank details if you have them. Everything is remembered for the next request.", S.canWrite&&S.me.id&&!S.payees.size?`<button class="btn primary" type="button" data-addpayee>Add payee</button>`:""); return; }
+  const fy=fyOf(todayISO()); const recent=Date.now()-30*864e5;
+  $("#payees-body").innerHTML=`<div class="tablewrap"><table style="min-width:960px"><thead><tr><th>Payee</th><th>GSTIN / PAN</th><th>Bank details</th><th>Defaults</th><th class="r">${esc(fyLabel(fy))} so far</th></tr></thead><tbody>${
+    list.map(p=>{ const fyTotal=S.requests.filter(r=>r.payeeId===p.id && r.kind!=="balance" && !["withdrawn","rejected"].includes(r.status) && fyOf(r.invoiceDate)===fy).reduce((s,r)=>s+(+r.taxable||0),0);
+      return `<tr class="click" data-payee="${esc(p.id)}" tabindex="0">
+      <td><div class="cell-main">${esc(p.name)}</div>${p.igHandle?`<div class="cell-sub">@${esc(handleClean(p.igHandle))}</div>`:""}${p.email?`<div class="cell-sub">${esc(p.email)}</div>`:""}</td>
+      <td><div class="mono small">${esc(p.gstin||"—")}</div><div class="cell-sub mono">${p.pan?esc(p.pan):`<span style="color:var(--bad)">No PAN · TDS 20%</span>`}</div></td>
+      <td>${p.account?`<div class="small">${esc(p.beneficiary||"")}</div><div class="cell-sub mono">${esc(p.ifsc)} · ${esc(last4(p.account))}</div>${p.bankChangedAt && new Date(p.bankChangedAt).getTime()>recent?`<span class="chip s-pending">Changed ${esc(fmtDate(p.bankChangedAt))}</span>`:""}`:`<span class="cell-sub">Not added</span>`}</td>
+      <td class="small">${esc(natureById(p.defaultNatureId)?.name||"—")}<div class="cell-sub">${esc(p.defaultCc||"")}${p.defaultTerms?` · ${esc(TERMS.find(t=>t.v===p.defaultTerms)?.l||"")}`:""}</div></td>
+      <td class="r num small">${esc(money0(fyTotal))}<div class="cell-sub">taxable value</div></td></tr>`; }).join("")
+  }</tbody></table></div>`;
+}
+
+/* ---------- settings ---------- */
+function renderSettings(){
+  const el=$("#settings-body");
+  if(!S.isAdmin){
+    const s=S.settings;
+    el.innerHTML=`<div class="notice"><p class="muted">Only the page owner and Editors can change these settings.</p></div>
+    <div class="sect"><div class="sect-h">Approval route</div>
+      <p style="margin:0">Invoices up to <strong class="num">${esc(money0(s.tierLimit))}</strong> need one Level 1 approval. Above that, a Level 2 approval follows.</p></div>
+    <div class="rolegrid">${Object.keys(ROLE_INFO).map(r=>`<div class="rolecard"><h3>${ROLE_INFO[r].title}</h3><p class="muted small" style="margin:0">${ROLE_INFO[r].desc}</p><div class="people">${roleIds(r).map(id=>personChip(id)).join("")||`<span class="muted small">Nobody yet</span>`}</div></div>`).join("")}</div>
+    <div class="sect"><div class="sect-h">Nature of payment master</div>
+      <div class="tdsgrid"><table><thead><tr><th>Nature of payment</th><th>TDS section</th><th class="r">Rate (ind./HUF)</th><th class="r">Rate (company/firm)</th><th class="r">Per-invoice limit</th><th class="r">Annual limit</th><th>Influencer</th></tr></thead><tbody>${s.natures.filter(n=>!n.inactive).map(n=>`<tr><td>${esc(n.name)}</td><td>${esc(n.section||"No TDS")}</td><td class="r num">${n.section?esc(n.rateInd)+"%":"—"}</td><td class="r num">${n.section?esc(n.rateOther)+"%":"—"}</td><td class="r num">${n.single?esc(money0(n.single)):"—"}</td><td class="r num">${n.annual?esc(money0(n.annual)):"—"}</td><td>${n.influencer?"Yes":""}</td></tr>`).join("")}</tbody></table></div></div>`;
+    return;
+  }
+  if(!S.sDraft || !S.sDirty) S.sDraft = JSON.parse(JSON.stringify(S.settings));
+  const d=S.sDraft;
+  const warn=[];
+  if(!d.roles.approver1.length) warn.push("No Level 1 approvers: every request will wait.");
+  if(!d.roles.approver2.length) warn.push(`No Level 2 approvers: invoices above ${money0(d.tierLimit)} will wait.`);
+  if(d.roles.approver2.length===1 && d.roles.approver1.length===1 && d.roles.approver1[0]===d.roles.approver2[0]) warn.push("The same single person is Level 1 and Level 2. Level 2 must come from someone other than the Level 1 approver, so large invoices will stall.");
+  if(!d.roles.finance.length) warn.push("No Finance people: approved requests can't be paid from here.");
+  if(!d.companyGstins.length) warn.push("Add Kenzen's GSTINs so invoices billed to the wrong entity are flagged.");
+  el.innerHTML=`
+  ${warn.length?`<div class="notice warn"><p>${warn.map(esc).join("<br>")}</p></div>`:""}
+  <div class="sect"><div class="sect-h"><span>Nature of payment master</span><button class="btn sm" type="button" id="nat-add">Add nature of payment</button></div>
+    <p class="muted small" style="margin:0">Each request picks one of these. TDS is deducted once the invoice crosses the per-invoice limit, or the payee's total for that TDS section in the financial year crosses the annual limit. Leave a limit at 0 if it doesn't apply, and leave the section blank for no TDS. Payees with no PAN get 20% (section 206AA). Ticking “Influencer” asks for the Instagram handle and reel link.</p>
+    <div class="tdsgrid"><table style="min-width:1040px"><thead><tr><th>Nature of payment</th><th style="width:96px">TDS section</th><th style="width:96px">Rate % ind./HUF</th><th style="width:96px">Rate % company/firm</th><th style="width:130px">Per-invoice limit ₹</th><th style="width:130px">Annual limit ₹</th><th style="width:80px">Influencer</th><th style="width:80px">In use</th></tr></thead><tbody>
+      ${d.natures.map((n,i)=>`<tr>
+        <td><input type="text" id="nat-name-${i}" data-nat="${i}" value="${esc(n.name)}" aria-label="Nature of payment"></td>
+        <td><input type="text" id="nat-sec-${i}" data-nat="${i}" value="${esc(n.section)}" placeholder="None" aria-label="TDS section" style="text-transform:uppercase"></td>
+        <td><input type="number" id="nat-ri-${i}" data-nat="${i}" min="0" max="100" step="0.01" value="${esc(n.rateInd)}" aria-label="Rate individual"></td>
+        <td><input type="number" id="nat-ro-${i}" data-nat="${i}" min="0" max="100" step="0.01" value="${esc(n.rateOther)}" aria-label="Rate company"></td>
+        <td><input type="number" id="nat-s-${i}" data-nat="${i}" min="0" step="1" value="${esc(n.single)}" aria-label="Per-invoice limit"></td>
+        <td><input type="number" id="nat-a-${i}" data-nat="${i}" min="0" step="1" value="${esc(n.annual)}" aria-label="Annual limit"></td>
+        <td style="text-align:center"><input type="checkbox" id="nat-inf-${i}" data-nat="${i}" ${n.influencer?"checked":""} aria-label="Influencer"></td>
+        <td style="text-align:center"><input type="checkbox" id="nat-act-${i}" data-nat="${i}" ${n.inactive?"":"checked"} aria-label="In use"></td></tr>`).join("")}
+    </tbody></table></div>
+    <span class="hint">Untick “In use” to retire a nature of payment without affecting old requests. Defaults follow FY 2025-26 rates and limits; confirm them with your CA, and rename sections if your filings use the Income-tax Act, 2025 numbering.</span>
+  </div>
+  <div class="sect"><div class="sect-h">Who approves and pays</div>
+    <p class="muted small" style="margin:0">People need access to this page (Contributor or above) to act. Nobody can approve a request they raised. Approvers can also change the terms of payment.</p>
+    <div class="rolegrid">${Object.keys(ROLE_INFO).map(r=>`<div class="rolecard">
+      <h3>${ROLE_INFO[r].title}</h3><p class="muted small" style="margin:0">${ROLE_INFO[r].desc}</p>
+      <div class="people">${d.roles[r].map(id=>personChip(id,r)).join("")||`<span class="muted small">Nobody yet</span>`}</div>
+      <div class="picker"><input type="search" id="pick-${r}" data-pick="${r}" placeholder="Add a colleague by name or email" autocomplete="off"><div class="hits" id="hits-${r}" hidden></div></div>
+    </div>`).join("")}</div>
+  </div>
+  <div class="grid3">
+    <div class="sect"><div class="sect-h">Amount tier</div>
+      <div class="field"><label for="set-tier">Level 2 needed above (₹, invoice total)</label><input type="number" min="1" step="1" id="set-tier" value="${esc(d.tierLimit)}"></div></div>
+    <div class="sect"><div class="sect-h">Kenzen GSTINs</div>
+      <div class="field"><label for="set-gstins">One per line</label><textarea id="set-gstins" rows="4">${esc((d.companyGstins||[]).join("\n"))}</textarea><span class="hint">Invoices billed to another GSTIN are flagged.</span></div></div>
+    <div class="sect"><div class="sect-h">Cost centres</div>
+      <div class="field"><label for="set-cc">One per line</label><textarea id="set-cc" rows="6">${esc(d.costCentres.join("\n"))}</textarea></div></div>
+  </div>
+  <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap">
+    <button class="btn" type="button" id="set-reset" ${S.sDirty?"":"disabled"}>Discard changes</button>
+    <button class="btn primary" type="button" id="set-save" ${S.sDirty?"":"disabled"}>Save settings</button>
+  </div>`;
+}
+function personChip(id, role){
+  return `<span class="person"><img alt="" src="${esc(av(id))}">${esc(nm(id))}${role?`<button type="button" aria-label="Remove" data-unrole="${role}" data-id="${esc(id)}">×</button>`:"<span style='width:6px'></span>"}</span>`;
+}
+function readSettingsInputs(){
+  const d=S.sDraft; if(!d) return;
+  const v=id=>$("#"+id);
+  if(v("set-tier")) d.tierLimit=Number(v("set-tier").value)||0;
+  if(v("set-gstins")) d.companyGstins=v("set-gstins").value.split(/[\n,]/).map(s=>s.trim().toUpperCase()).filter(Boolean);
+  if(v("set-cc")) d.costCentres=v("set-cc").value.split("\n").map(s=>s.trim()).filter(Boolean);
+  d.natures.forEach((n,i)=>{
+    if(!v("nat-name-"+i)) return;
+    n.name=v("nat-name-"+i).value.trim(); n.section=v("nat-sec-"+i).value.trim().toUpperCase();
+    n.rateInd=Number(v("nat-ri-"+i).value)||0; n.rateOther=Number(v("nat-ro-"+i).value)||0;
+    n.single=Number(v("nat-s-"+i).value)||0; n.annual=Number(v("nat-a-"+i).value)||0;
+    n.influencer=v("nat-inf-"+i).checked; n.inactive=!v("nat-act-"+i).checked;
+  });
+}
+function markDirty(){ S.sDirty=true; const s=$("#set-save"), r=$("#set-reset"); if(s) s.disabled=false; if(r) r.disabled=false; }
+async function saveSettings(){
+  readSettingsInputs();
+  const d=S.sDraft;
+  if(!(d.tierLimit>0)) return toast("Enter a threshold above ₹0.","bad");
+  if(!d.costCentres.length) return toast("Add at least one cost centre.","bad");
+  d.natures=d.natures.filter(n=>n.name || n.section);
+  const seen=new Set();
+  for(const n of d.natures){
+    if(!n.name) return toast("Every nature of payment needs a name.","bad");
+    if(seen.has(n.name.toLowerCase())) return toast(`“${n.name}” is listed twice.`,"bad"); seen.add(n.name.toLowerCase());
+    if(n.section && (!(n.rateInd>=0 && n.rateInd<=100) || !(n.rateOther>=0 && n.rateOther<=100))) return toast(`Check the TDS rates for “${n.name}”.`,"bad");
+  }
+  for(const g of d.companyGstins){ if(!GSTIN_RE.test(g)) return toast(`${g} isn't a valid GSTIN.`,"bad"); }
+  const payload={tierLimit:d.tierLimit, companyGstins:d.companyGstins, costCentres:d.costCentres, natures:d.natures, roles:d.roles, updatedAt:new Date().toISOString(), updatedBy:S.me.id};
+  const btn=$("#set-save"); if(btn) btn.disabled=true;
+  try{ await S.db.doc("config/settings").set(payload); S.sDirty=false; S.settings=mergeSettings(payload); toast("Settings saved."); render(); }
+  catch(e){ if(btn) btn.disabled=false; toast(writeErr(e),"bad"); }
+}
+let searchSeq=0;
+async function runSearch(role, q){
+  const box=$("#hits-"+role); if(!box || !S.user) return;
+  const my=++searchSeq;
+  let hits=[]; try{ hits=await S.user.search(q); }catch(_){}
+  if(my!==searchSeq) return;
+  hits=hits.filter(h=>!S.sDraft.roles[role].includes(h.id));
+  box.innerHTML = hits.length ? hits.map(h=>`<button type="button" class="hit" data-addrole="${role}" data-id="${esc(h.id)}"><img alt="" src="${esc(h.avatarUrl)}"><span></span></button>`).join("") : `<div class="hint" style="padding:10px">${q?"No one found. They may need access to this page first.":"Start typing a name."}</div>`;
+  box.querySelectorAll(".hit span").forEach((sp,i)=>{ sp.textContent = hits[i].name + (hits[i].email?` · ${hits[i].email}`:""); });
+  box.hidden=false;
+}
+
+/* ---------- drawer ---------- */
+function openDrawer(state){
+  if(!S.db && state.mode!=="detail"){ toast("The desk isn't connected to its storage, so nothing can be saved. Reload the page and try again.","bad"); return; }
+  S.drawer=state; $("#drawer").hidden=false; $("#scrim").hidden=false; document.body.style.overflow="hidden"; drawDrawer(); }
+function closeDrawer(){ if(S.drawer?.ctl) S.drawer.ctl.abort(); S.drawer=null; $("#drawer").hidden=true; $("#scrim").hidden=true; document.body.style.overflow=""; }
+function drawDrawer(){ const m=S.drawer?.mode; if(m==="detail") renderDetail(false); else if(m==="form") renderForm(); else if(m==="payee") renderPayeeForm(); }
+function setFoot(html){ const f=$("#drawer-foot"); f.innerHTML=html||""; f.hidden=!html; }
+
+function routeHTML(r){
+  const st=r.status, l1=!!r.l1By, l2=!!r.l2By; const s=[];
+  s.push(`<span class="step done">Raised</span>`);
+  s.push(`<span class="step ${l1?"done":st==="pending_l1"?"now":st==="rejected"&&!l1?"stop":""}">Level 1</span>`);
+  if(r.levels===2) s.push(`<span class="step ${l2?"done":st==="pending_l2"?"now":st==="rejected"&&l1?"stop":""}">Level 2</span>`);
+  s.push(`<span class="step ${st==="paid"?"done":st==="approved"?"now":""}">Paid</span>`);
+  if(r.kind==="advance") s.push(`<span class="step ${r.balanceId?"done":st==="paid"?"now":""}">Balance</span>`);
+  return `<div class="route">${s.join("<span class='muted'>→</span>")}</div>`;
+}
+const ACT_LABEL={submitted:"Raised the request",resubmitted:"Edited and resubmitted",approved_l1:"Approved at Level 1",approved_l2:"Approved at Level 2",rejected:"Sent it back",withdrawn:"Withdrew the request",paid:"Marked as paid",terms_changed:"Changed the terms of payment",invoice_checked:"Read the document and compared amounts",reel_checked:"Confirmed the reel is live",balance_raised:"Raised the balance payment"};
+const ACT_DOT={approved_l1:"ok",approved_l2:"ok",paid:"ok",rejected:"bad",submitted:"acc",resubmitted:"acc",terms_changed:"acc",reel_checked:"ok",balance_raised:"acc"};
+
+function checklistHTML(r){
+  const cs=checks(r);
+  return `<ul class="checklist">${cs.map(c=>{
+    const ov = !c.ok && c.ovr && r.overrides?.[c.id];
+    const cls = c.ok ? "ok" : ov ? "acc" : c.sev==="warn" ? "warn" : "no";
+    const mk = c.ok ? "✓" : ov ? "!" : c.sev==="warn" ? "!" : "✕";
+    return `<li><span class="mark ${cls}">${mk}</span><div><div>${esc(c.ok?c.label:c.reason)}</div>${c.detail?`<div class="cell-sub">${esc(c.detail)}</div>`:""}${ov?`<div class="cell-sub">Accepted by ${esc(nm(ov.by))}: ${esc(ov.note)}</div>`:""}${!c.ok&&!ov&&c.sev==="warn"?`<div class="cell-sub">Warning only</div>`:""}</div></li>`;
+  }).join("")}</ul>`;
+}
+function voucherHTML(r){
+  let rows=`
+    <div class="vrow"><span>Taxable value</span><span class="num">${esc(money(r.taxable))}</span></div>
+    <div class="vrow"><span>GST${r.gstRate!=="custom"&&r.gstRate!=null?` @ ${esc(r.gstRate)}%`:""}</span><span class="num">${esc(money(r.gstAmount))}</span></div>
+    <div class="vrow"><span><strong>${r.docType==="pi"?"PI total":"Invoice total"}</strong></span><span class="num"><strong>${esc(money(r.invoiceTotal))}</strong></span></div>
+    <div class="vrow"><span>TDS on full ${r.docType==="pi"?"PI":"invoice"} · ${esc(tdsText(r))}</span><span class="num">− ${esc(money(r.tdsAmount))}</span></div>`;
+  if(r.kind==="advance"||r.kind==="balance"){
+    rows+=`<div class="vrow"><span>Net of TDS (full ${r.docType==="pi"?"PI":"invoice"})</span><span class="num">${esc(money(r.invoiceNet))}</span></div>`;
+    if(r.kind==="balance"){ const par=S.requests.find(x=>x.id===r.parentId); if(par) rows+=`<div class="vrow"><span>Already paid as advance (${esc(par.id)})</span><span class="num">${esc(money(par.payGross))} − TDS ${esc(money(par.payTds))}</span></div>`; }
+    rows+=`<div class="vrow"><span>${r.kind==="advance"?"Advance":"Balance"} amount (incl. GST)</span><span class="num">${esc(money(r.payGross))}</span></div>
+      <div class="vrow"><span>Less TDS on this payment</span><span class="num">− ${esc(money(r.payTds))}</span></div>`;
+  }
+  rows+=`<div class="vrow total"><span><strong>Net payable${r.kind==="advance"?" now":""}</strong></span><span class="num">${esc(money(r.netPayable))}</span></div>`;
+  return `<div class="voucher">${rows}</div>`;
+}
+
+function renderDetail(isRefresh){
+  const st=S.drawer; const id=st.id; const r=S.requests.find(x=>x.id===id);
+  if(!r){ if(!isRefresh){ $("#drawer-body").innerHTML=emptyBox("Request not found","It may have been removed."); setFoot(""); } return; }
+  if(isRefresh){
+    const ae=document.activeElement;
+    if(st.busy) return;
+    if(ae && $("#drawer").contains(ae) && ["TEXTAREA","INPUT","SELECT"].includes(ae.tagName) && st.lastStatus===r.status) return;
+  }
+  const keep={note:$("#act-note")?.value, utr:$("#pay-utr")?.value, date:$("#pay-date")?.value, accept:$("#act-accept")?.checked, reel:$("#act-reel")?.checked};
+  st.lastStatus=r.status;
+  $("#drawer-title").innerHTML=`<span class="mono">${esc(r.id)}</span>`;
+  const act=myAction(r), w=waitingOn(r), p=r.payee||{}, v=verdict(r), cs=checks(r);
+  let action="";
+  if(act==="approve"){
+    const hard=cs.filter(c=>c.sev==="block" && !c.ovr && !c.ok && c.id!=="reelok");
+    const soft=cs.filter(c=>c.sev==="block" && c.ovr && !passes(c,r));
+    const needReel = r.isInfluencer && !r.reelCheckedBy;
+    action=`<div class="actbox"><h3>${r.status==="pending_l1"?"Level 1":"Level 2"} approval</h3>
+      <p class="small muted" style="margin:0">You're approving <strong class="num">${esc(money(r.netPayable))}</strong>${r.kind==="advance"?" as an advance":r.kind==="balance"?" as the balance":""} to ${esc(p.name)} for ${esc(r.nature||"this invoice")}, on terms “${esc(termsLabel(r))}”.</p>
+      ${hard.length?`<div class="notice warn"><p class="small">This can't be approved until it's fixed: ${esc(hard.map(c=>c.reason).join("; "))}. Send it back with a comment.</p></div>`:""}
+      ${needReel && !hard.length?`<label class="check"><input type="checkbox" id="act-reel"> <span>I opened <a href="${esc(r.reelLink)}" target="_blank" rel="noopener">the reel</a>. It's live on @${esc(handleClean(r.igHandle))} and matches the brief.</span></label>`:""}
+      ${soft.length && !hard.length?`<label class="check"><input type="checkbox" id="act-accept"> <span>Accept these exceptions and approve anyway: ${esc(soft.map(c=>c.reason).join("; "))}. Explain why in the comment.</span></label>`:""}
+      <div class="field"><label for="act-note">Comment ${soft.length?"(required)":"(required to send back)"}</label><textarea id="act-note" rows="2" placeholder="e.g. PO reference missing, GST amount doesn't match invoice"></textarea></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap"><button class="btn bad" type="button" data-act="reject">Send back</button><button class="btn ok" type="button" data-act="approve" ${hard.length?"disabled":""}>Approve</button></div></div>`;
+  } else if(act==="pay"){
+    action = v.k==="yes" ? `<div class="actbox"><h3>Record payment</h3>
+      ${p.account?`<p class="small" style="margin:0">Pay <strong class="num">${esc(money(r.netPayable))}</strong> to ${esc(p.beneficiary||p.name)} · <span class="mono">${esc(p.account)}</span> · <span class="mono">${esc(p.ifsc)}</span>${p.bank?` · ${esc(p.bank)}`:""}</p>`:`<p class="small" style="margin:0;color:var(--warn)">No bank details on file. Confirm the account with ${esc(p.name)} before paying.</p>`}
+      <div class="grid2"><div class="field"><label for="pay-utr">UTR / bank reference</label><input type="text" id="pay-utr" autocomplete="off" placeholder="e.g. HDFCR52026103012345678"></div>
+      <div class="field"><label for="pay-date">Paid on</label><input type="date" id="pay-date" value="${todayISO()}" max="${todayISO()}"></div></div>
+      <div style="display:flex;justify-content:flex-end"><button class="btn ok" type="button" data-act="paid">Mark as paid</button></div></div>`
+      : `<div class="notice warn"><p class="small">Approved, but it can't be paid yet: ${esc(v.reasons.join("; "))}. Ask an approver to send it back so it's corrected.</p></div>`;
+  } else if(act==="fix"){
+    const why=[...(r.history||[])].reverse().find(h=>h.action==="rejected");
+    action=`<div class="actbox"><h3>Sent back by ${esc(nm(why?.by))}</h3>${why?.note?`<p style="margin:0;white-space:pre-wrap">${esc(why.note)}</p>`:""}
+      <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap"><button class="btn" type="button" data-act="withdraw">Withdraw</button><button class="btn primary" type="button" data-edit="${esc(r.id)}">Edit &amp; resubmit</button></div></div>`;
+  } else if(["pending_l1","pending_l2"].includes(r.status)){
+    action=`<div class="notice"><p class="small">${w.length?`Waiting for ${esc(w.map(nm).join(", "))}.`:`Nobody is assigned who can approve this yet${r.status==="pending_l2"?" at Level 2":""}.`}</p>${r.requestedBy===S.me.id && S.canWrite?`<button class="btn" type="button" data-act="withdraw">Withdraw</button>`:""}</div>`;
+  } else if(r.status==="approved"){
+    action=`<div class="notice"><p class="small">Approved. ${w.length?`Waiting for ${esc(w.map(nm).join(", "))} to pay.`:"No Finance person is assigned yet."}</p></div>`;
+  }
+  if(r.kind==="advance" && r.status==="paid"){
+    if(r.balanceId) action+=`<div class="infobox">Balance raised on <button class="btn ghost" type="button" data-jump="${esc(r.balanceId)}" style="padding:0">${esc(r.balanceId)}</button></div>`;
+    else if(canRaiseBalance(r)) action+=`<div class="actbox"><h3>Balance pending</h3><p class="small" style="margin:0"><strong class="num">${esc(money(balanceLeft(r)))}</strong> of the ${r.docType==="pi"?"PI":"invoice"} total (${esc(money(r.invoiceTotal))}) is still to be paid. When it's due, raise it here. Attach the final tax invoice if you have it; the balance goes through approval again.</p><div style="display:flex;justify-content:flex-end"><button class="btn primary" type="button" data-balance="${esc(r.id)}">Raise balance payment</button></div></div>`;
+    else action+=`<div class="infobox">Balance of ${esc(money(balanceLeft(r)))} not raised yet. ${esc(nm(r.requestedBy))} can raise it.</div>`;
+  }
+  if(r.kind==="balance") action+=`<div class="infobox">Balance against advance <button class="btn ghost" type="button" data-jump="${esc(r.parentId)}" style="padding:0">${esc(r.parentId)}</button></div>`;
+  const canRead = S.sample && S.canWrite && (r.attachments||[]).length && !["paid","withdrawn"].includes(r.status);
+  const termsBlock = st.editTerms ? `<div class="actbox"><h3>Change terms of payment</h3>
+      <div class="grid2"><div class="field"><label for="t-terms">Terms</label><select id="t-terms">${TERMS.map(t=>`<option value="${t.v}" ${t.v===r.termsCode?"selected":""}>${esc(t.l)}</option>`).join("")}</select></div>
+      <div class="field"><label for="t-due">Pay by</label><input type="date" id="t-due" value="${esc(r.dueDate||"")}"></div></div>
+      <div class="field" id="t-custom-wrap" ${r.termsCode==="custom"?"":"hidden"}><label for="t-custom">Describe the terms</label><input type="text" id="t-custom" value="${esc(r.termsText||"")}" placeholder="e.g. 50% advance, 50% after delivery"></div>
+      <div class="field"><label for="t-note">Reason for the change</label><input type="text" id="t-note" placeholder="e.g. Vendor agreed to 45 days on call"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn" type="button" data-terms="cancel">Cancel</button><button class="btn primary" type="button" data-terms="save">Save terms</button></div></div>` : "";
+  const hist=(r.history||[]).map(h=>`<li><span class="dot ${ACT_DOT[h.action]||""}"></span><div><div><strong>${esc(nm(h.by))}</strong> · ${esc(ACT_LABEL[h.action]||h.action)}</div><div class="cell-sub">${esc(fmtWhen(h.at))}</div>${h.note?`<div class="note">${esc(h.note)}</div>`:""}</div></li>`).join("");
+  const files=(r.attachments||[]).map(a=>`<div class="file"><a href="/_blob/${esc(a.id)}" target="_blank" rel="noopener">${esc(a.name)}</a><span class="muted small">${a.size?Math.max(1,Math.round(a.size/1024))+" KB":""}</span></div>`).join("") || `<p class="muted small" style="margin:0">Nothing attached.</p>`;
+  $("#drawer-body").innerHTML=`
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${chip(r.status)}${r.kind&&r.kind!=="full"?`<span class="tag">${kindLabel(r)}</span>`:""}${r.docType==="pi"?`<span class="tag">Proforma</span>`:""}${r.isInfluencer?`<span class="tag">Influencer</span>`:""}${r.priority==="urgent"?`<span class="urgent">Urgent</span>`:""}${isOverdue(r)?`<span class="overdue small">Overdue</span>`:""}</div>
+    ${routeHTML(r)}
+    <div class="vbox ${v.k}"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap"><div><span class="flabel">CAN THIS BE PAID?</span>${verdictHTML(r,true)}</div>
+      ${canRead?`<button class="btn sm" type="button" id="d-read">${r.extracted?"Read document again":"Read document and compare"}</button>`:""}</div>
+      ${checklistHTML(r)}<span class="hint" id="d-read-msg"></span></div>
+    ${action}
+    <div class="sect"><div class="sect-h">Amounts</div>
+      ${voucherHTML(r)}
+      ${r.tdsNote?`<p class="hint" style="margin:0">${esc(r.tdsNote)}</p>`:""}
+      ${r.extracted?`<div class="readbox"><strong>From the document</strong>${readTableHTML(r.extracted,r)}</div>`:""}
+      <p class="hint" style="margin:0">Route set at submission: ${r.levels===2?`above ${esc(money0(r.tierLimit))}, so Level 1 and Level 2`:`up to ${esc(money0(r.tierLimit))}, so Level 1 only`}.</p>
+    </div>
+    <div class="sect"><div class="sect-h"><span>Nature and terms of payment</span>${canEditTerms(r)&&!st.editTerms?`<button class="btn sm" type="button" data-terms="edit">Edit terms</button>`:""}</div>
+      <dl class="kv"><dt>Nature of payment</dt><dd>${esc(r.nature||"—")}${r.natureId==="other"?`<div class="cell-sub">Not in the master</div>`:""}</dd>
+      <dt>TDS</dt><dd>${esc(tdsText(r))}${r.tdsAuto===false?`<div class="cell-sub">Set by hand</div>`:""}</dd>
+      <dt>Terms of payment</dt><dd>${esc(termsLabel(r))}</dd><dt>Pay by</dt><dd>${esc(fmtDate(r.dueDate))}</dd></dl>
+      ${termsBlock}
+    </div>
+    ${r.isInfluencer?`<div class="sect"><div class="sect-h">Influencer</div><dl class="kv"><dt>Instagram</dt><dd>@${esc(handleClean(r.igHandle))}</dd>
+      <dt>Reel</dt><dd>${r.reelLink?`<a href="${esc(r.reelLink)}" target="_blank" rel="noopener">${esc(r.reelLink)}</a>`:"—"}</dd>
+      <dt>Reel check</dt><dd>${r.reelCheckedBy?`Confirmed live by ${esc(nm(r.reelCheckedBy))}, ${esc(fmtWhen(r.reelCheckedAt))}`:"Not yet confirmed"}</dd></dl></div>`:""}
+    <div class="sect"><div class="sect-h">Payee</div>
+      <dl class="kv"><dt>Payee</dt><dd>${esc(p.name)}</dd>${p.email?`<dt>Email</dt><dd>${esc(p.email)}</dd>`:""}
+      <dt>GSTIN</dt><dd class="mono">${esc(p.gstin||"—")}</dd><dt>PAN</dt><dd class="mono">${esc(p.pan||"—")}</dd>
+      ${p.account?`<dt>Beneficiary</dt><dd>${esc(p.beneficiary||"—")}</dd><dt>Account</dt><dd class="mono">${esc(p.account)}</dd><dt>IFSC</dt><dd class="mono">${esc(p.ifsc)}${p.bank?` · ${esc(p.bank)}`:""}</dd>`:`<dt>Bank</dt><dd class="muted">Not on file</dd>`}</dl></div>
+    <div class="sect"><div class="sect-h">${r.docType==="pi"?"Proforma invoice":"Invoice"}</div>
+      <dl class="kv"><dt>${r.docType==="pi"?"PI no.":"Invoice no."}</dt><dd class="mono">${esc(r.invoiceNo)}</dd><dt>Date</dt><dd>${esc(fmtDate(r.invoiceDate))}</dd>
+      <dt>Payment</dt><dd>${esc(kindLabel(r))}</dd><dt>Cost centre</dt><dd>${esc(r.costCentre)}</dd><dt>Details</dt><dd style="white-space:pre-wrap">${esc(r.description||"—")}</dd></dl>
+      <div class="files">${files}</div></div>
+    ${r.status==="paid"?`<div class="sect"><div class="sect-h">Payment</div><dl class="kv"><dt>Paid on</dt><dd>${esc(fmtDate(r.paidOn))}</dd><dt>UTR</dt><dd class="mono">${esc(r.utr)}</dd><dt>Recorded by</dt><dd>${esc(nm(r.paidBy))}</dd></dl></div>`:""}
+    <div class="sect"><div class="sect-h">Trail</div><ul class="timeline">${hist}</ul></div>`;
+  if(keep.note && $("#act-note")) $("#act-note").value=keep.note;
+  if(keep.utr && $("#pay-utr")) $("#pay-utr").value=keep.utr;
+  if(keep.date && $("#pay-date")) $("#pay-date").value=keep.date;
+  if(keep.accept && $("#act-accept")) $("#act-accept").checked=true;
+  if(keep.reel && $("#act-reel")) $("#act-reel").checked=true;
+  setFoot("");
+}
+
+async function detailRead(){
+  const st=S.drawer; const r=S.requests.find(x=>x.id===st.id); if(!r) return;
+  const a=(r.attachments||[]).slice(-1)[0]; if(!a) return;
+  const btn=$("#d-read"), msg=$("#d-read-msg"); btn.disabled=true; msg.textContent="Reading the document… this can take up to a minute."; st.busy=true;
+  try{
+    const blob=await blobForAttachment(a);
+    const ex=await readInvoice(blob, a.type || blob.type);
+    const ref=S.db.doc("requests/"+r.id); const snap=await ref.get(); const cur=snap.data()||{};
+    const now=new Date().toISOString();
+    await ref.update({extracted:ex, history:[...(cur.history||[]), {at:now,by:S.me.id,action:"invoice_checked",note:a.name}]});
+    toast("Document read. The checks are updated.");
+  }catch(e){ const m=e.code==="fetch_failed"?"Couldn't open the attachment.":(e.code==="invalid_argument"?writeErr(e):readErr(e)); if(m) toast(m,"bad"); if(msg) msg.textContent=""; }
+  finally{ st.busy=false; if(btn) btn.disabled=false; if(S.drawer===st) renderDetail(false); }
+}
+
+async function saveTerms(){
+  const st=S.drawer; const code=$("#t-terms").value, text=($("#t-custom")?.value||"").trim(), due=$("#t-due").value, note=($("#t-note").value||"").trim();
+  if(code==="custom" && !text) return toast("Describe the terms.","bad");
+  if(!due) return toast("Enter the pay-by date.","bad");
+  if(!note) return toast("Add a reason for the change.","bad");
+  try{
+    const ref=S.db.doc("requests/"+st.id); const snap=await ref.get(); const r=snap.data();
+    if(!canEditTerms({...r})) throw {message:"Terms can't be changed at this stage."};
+    const now=new Date().toISOString();
+    const before=`${termsLabel(r)}, due ${fmtDate(r.dueDate)}`, after=`${code==="custom"?text:TERMS.find(t=>t.v===code).l}, due ${fmtDate(due)}`;
+    await ref.update({termsCode:code, termsText:code==="custom"?text:"", dueDate:due, updatedAt:now, history:[...(r.history||[]), {at:now,by:S.me.id,action:"terms_changed",note:`${before} → ${after}. ${note}`}]});
+    st.editTerms=false; toast("Terms updated."); renderDetail(false);
+  }catch(e){ toast(e.code?writeErr(e):e.message,"bad"); }
+}
+
+async function doAction(kind){
+  const st=S.drawer; const id=st?.id; if(!id) return;
+  const note=($("#act-note")?.value||"").trim();
+  if(kind==="reject" && !note){ toast("Add a comment so the requester knows what to fix.","bad"); $("#act-note")?.focus(); return; }
+  let utr="", paidOn="";
+  if(kind==="paid"){ utr=($("#pay-utr")?.value||"").trim().toUpperCase(); paidOn=$("#pay-date")?.value||todayISO();
+    if(utr.length<6){ toast("Enter the UTR or bank reference from the bank statement.","bad"); $("#pay-utr")?.focus(); return; } }
+  document.querySelectorAll("[data-act]").forEach(b=>b.disabled=true); st.busy=true;
+  try{
+    const ref=S.db.doc("requests/"+id); const snap=await ref.get();
+    if(!snap.exists) throw {message:"This request no longer exists."};
+    const r={id, ...snap.data()}; const me=S.me.id; const now=new Date().toISOString();
+    const h=[...(r.history||[])]; const patch={updatedAt:now}; const a=myAction(r);
+    if(kind==="approve"){
+      if(a!=="approve") throw {message:"This request has already moved on. The latest version is shown."};
+      const cs=checks(r);
+      const hard=cs.filter(c=>c.sev==="block" && !c.ovr && !c.ok && c.id!=="reelok");
+      if(hard.length) throw {message:`Can't approve: ${hard[0].reason}. Send it back instead.`};
+      if(r.isInfluencer && !r.reelCheckedBy){
+        if(!$("#act-reel")?.checked) throw {message:"Open the reel and tick the confirmation before approving."};
+        patch.reelCheckedBy=me; patch.reelCheckedAt=now; h.push({at:now,by:me,action:"reel_checked",note:r.reelLink||""});
+      }
+      const soft=cs.filter(c=>c.sev==="block" && c.ovr && !passes(c,r));
+      if(soft.length){
+        if(!$("#act-accept")?.checked || !note) throw {message:"Tick “Accept these exceptions” and explain why in the comment, or send it back."};
+        patch.overrides={...(r.overrides||{})}; soft.forEach(c=>patch.overrides[c.id]={by:me,at:now,note,reason:c.reason});
+      }
+      const n2 = soft.length?`Accepted exceptions: ${soft.map(c=>c.reason).join("; ")}. ${note}`:note;
+      if(r.status==="pending_l1"){ patch.l1By=me; patch.l1At=now; patch.status=r.levels===2?"pending_l2":"approved"; h.push({at:now,by:me,action:"approved_l1",note:n2}); }
+      else { patch.l2By=me; patch.l2At=now; patch.status="approved"; h.push({at:now,by:me,action:"approved_l2",note:n2}); }
+    } else if(kind==="reject"){
+      if(a!=="approve") throw {message:"This request has already moved on. The latest version is shown."};
+      patch.status="rejected"; patch.rejectedBy=me; patch.rejectedAt=now; h.push({at:now,by:me,action:"rejected",note});
+    } else if(kind==="withdraw"){
+      if(r.requestedBy!==me || !["pending_l1","pending_l2","rejected"].includes(r.status)) throw {message:"Only the requester can withdraw a request before it's approved."};
+      patch.status="withdrawn"; h.push({at:now,by:me,action:"withdrawn",note});
+    } else if(kind==="paid"){
+      if(a!=="pay") throw {message:"This request isn't waiting for payment any more."};
+      const v=verdict(r); if(v.k!=="yes") throw {message:`Can't mark paid: ${v.reasons.join("; ")}`};
+      patch.status="paid"; patch.paidBy=me; patch.paidOn=paidOn; patch.utr=utr; h.push({at:now,by:me,action:"paid",note:`UTR ${utr} · ${fmtDate(paidOn)} · ${money(r.netPayable)}`});
+    }
+    patch.history=h;
+    await ref.update(patch);
+    if(kind==="withdraw" && r.kind==="balance" && r.parentId){
+      try{ const pref=S.db.doc("requests/"+r.parentId); const ps=await pref.get(); if(ps.exists && ps.data().balanceId===r.id) await pref.update({balanceId:null, history:[...(ps.data().history||[]), {at:now,by:me,action:"withdrawn",note:`Balance ${r.id} withdrawn`}]}); }catch(_){}
+    }
+    toast({approve:patch.status==="approved"?"Approved. It's now with Finance.":"Approved at Level 1. Sent to Level 2.",reject:"Sent back to the requester.",withdraw:"Request withdrawn.",paid:r.kind==="advance"?"Advance marked as paid. The balance now waits for the requester to raise it.":"Marked as paid."}[kind]);
+    closeDrawer();
+  }catch(e){ st.busy=false; toast(e.code?writeErr(e):(e.message||"Couldn't save that."),"bad"); document.querySelectorAll("[data-act]").forEach(b=>b.disabled=false); }
+}
+
+/* ---------- request form ---------- */
+function newDraft(){ return {payeeId:"", docType:"tax", kind:"full", payGross:"", invoiceNo:"", invoiceDate:"", description:"", natureId:"", natureOther:"", costCentre:"", taxable:"", gstRate:"18", gstAmount:"", tdsApplied:false, tdsSec:"", tdsRate:"", termsCode:"net30", termsText:"", dueDate:"", priority:"normal", isInf:false, igHandle:"", reelLink:""}; }
+function openNewRequest(){ openDrawer({mode:"form", editId:null, kind:"new", parent:null, draft:newDraft(), attachments:[], blobs:{}, tdsAuto:true, dueAuto:true, infManual:false, extracted:null}); }
+function draftFromReq(r){
+  return {payeeId:r.payeeId, docType:r.docType||"tax", kind:r.kind||"full", payGross:r.kind==="advance"?String(r.payGross):"", invoiceNo:r.invoiceNo, invoiceDate:r.invoiceDate, description:r.description||"",
+    natureId:r.natureId||"", natureOther:r.natureId==="other"?r.nature:"", costCentre:r.costCentre,
+    taxable:String(r.taxable), gstRate:String(r.gstRate??"custom"), gstAmount:String(r.gstAmount),
+    tdsApplied:!!r.tdsApplied, tdsSec:r.tdsSectionCode||"", tdsRate:String(r.tdsRate??""),
+    termsCode:r.termsCode||"custom", termsText:r.termsText||"", dueDate:r.dueDate, priority:r.priority||"normal",
+    isInf:!!r.isInfluencer, igHandle:r.igHandle||"", reelLink:r.reelLink||""};
+}
+function openEditRequest(id){
+  const r=S.requests.find(x=>x.id===id); if(!r) return;
+  openDrawer({mode:"form", editId:id, kind:r.kind==="balance"?"balance":"new", parent:r.kind==="balance"?S.requests.find(x=>x.id===r.parentId):null,
+    attachments:(r.attachments||[]).map(a=>({...a})), blobs:{}, tdsAuto:r.tdsAuto!==false, dueAuto:false, infManual:true, extracted:r.extracted||null, draft:draftFromReq(r)});
+}
+function openBalance(parentId){
+  const par=S.requests.find(x=>x.id===parentId); if(!par) return;
+  const d=draftFromReq(par);
+  d.kind="balance"; d.payGross=""; d.docType="tax"; d.dueDate=""; d.priority="normal";
+  d.description=`Balance against advance ${par.id}${par.description?` · ${par.description}`:""}`;
+  if(["advance","live"].includes(d.termsCode)) d.termsCode="receipt";
+  openDrawer({mode:"form", editId:null, kind:"balance", parent:par, attachments:(par.attachments||[]).map(a=>({...a})), blobs:{}, tdsAuto:true, dueAuto:true, infManual:true, extracted:null, draft:d});
+}
+function readForm(){
+  const v=id=>($("#"+id)?.value ?? "");
+  const st=S.drawer;
+  return {payeeId:v("f-payee"), docType:v("f-doctype")||"tax", kind: st.kind==="balance" ? "balance" : (v("f-kind")||"full"), payGross:v("f-paygross"),
+    invoiceNo:v("f-invno").trim(), invoiceDate:v("f-invdate"), description:v("f-desc").trim(), natureId:v("f-nature"), natureOther:v("f-nature-other").trim(), costCentre:v("f-cc"),
+    taxable:v("f-taxable"), gstRate:v("f-gstrate"), gstAmount:v("f-gstamt"), tdsApplied:!!$("#f-tdson")?.checked, tdsSec:v("f-tdssec").trim().toUpperCase(), tdsRate:v("f-tdsrate"),
+    termsCode:v("f-terms"), termsText:v("f-terms-custom").trim(), dueDate:v("f-due"), priority:v("f-priority")||"normal",
+    isInf:!!$("#f-inf")?.checked, igHandle:v("f-ig").trim(), reelLink:v("f-reel").trim()};
+}
+function compute(d){
+  const st=S.drawer;
+  const taxable=r2(d.taxable);
+  const gst = d.gstRate==="custom" ? r2(d.gstAmount) : r2(taxable*Number(d.gstRate||0)/100);
+  const total=r2(taxable+gst);
+  const rate = d.tdsApplied ? (Number(d.tdsRate)||0) : 0;
+  const tds = d.tdsApplied ? Math.round(taxable*rate/100) : 0;
+  const net = r2(total-tds);
+  let payGross=total, payTds=tds;
+  if(d.kind==="advance"){ payGross=r2(d.payGross); payTds = total>0 ? Math.round(payGross*(taxable/total)*rate/100) : 0; }
+  if(d.kind==="balance" && st?.parent){ payGross=r2(total-(Number(st.parent.payGross)||0)); payTds=Math.max(0, tds-(Number(st.parent.payTds)||0)); }
+  return {taxable,gst,total,rate,tds,net,payGross,payTds,payNet:r2(payGross-payTds)};
+}
+function renderForm(){
+  const st=S.drawer, d=st.draft, isBal=st.kind==="balance", par=st.parent;
+  $("#drawer-title").textContent = st.editId ? `Edit ${st.editId}` : isBal ? `Balance for ${par?.id}` : "New payment request";
+  const payees=[...S.payees.values()].sort((a,b)=>String(a.name).localeCompare(String(b.name)));
+  const ccs=[...new Set([...S.settings.costCentres, d.costCentre].filter(Boolean))];
+  const nats=S.settings.natures.filter(n=>!n.inactive || n.id===d.natureId);
+  const gstOpts=["0","5","18","40"];
+  const canAttach=!!S.assets;
+  $("#drawer-body").innerHTML=`
+    ${isBal && par ? `<div class="infobox"><strong>Balance against advance ${esc(par.id)}</strong><span>Advance paid ${esc(fmtDate(par.paidOn))}: ${esc(money(par.payGross))} incl. GST, less TDS ${esc(money(par.payTds))} (UTR ${esc(par.utr||"—")}).</span><span class="hint">Update the amounts if the final tax invoice differs from the PI, and attach it. The balance is worked out below.</span></div>` : ""}
+    <div class="sect"><div class="sect-h">Who is being paid</div>
+      <div class="field"><label for="f-payee">Payee</label>
+        <select id="f-payee" ${isBal?"disabled":""}><option value="">Choose a payee…</option>${payees.map(p=>`<option value="${esc(p.id)}" ${p.id===d.payeeId?"selected":""}>${esc(p.name)}${p.gstin?` · ${esc(p.gstin)}`:p.pan?` · ${esc(p.pan)}`:""}</option>`).join("")}${isBal?"":`<option value="__new">＋ Add a new payee…</option>`}</select>
+        <span class="hint" id="f-payee-hint"></span></div>
+    </div>
+    <div class="sect"><div class="sect-h">Document</div>
+      <div class="grid2">
+        <div class="field"><label for="f-doctype">Document type</label><select id="f-doctype"><option value="tax" ${d.docType!=="pi"?"selected":""}>Tax invoice</option><option value="pi" ${d.docType==="pi"?"selected":""}>Proforma invoice (PI)</option></select></div>
+        ${isBal ? `<div class="field"><span class="flabel">Payment type</span><span>Balance payment</span></div>` : `<div class="field"><label for="f-kind">Payment type</label><select id="f-kind"><option value="full" ${d.kind!=="advance"?"selected":""}>Full payment</option><option value="advance" ${d.kind==="advance"?"selected":""}>Advance (part payment)</option></select></div>`}
+      </div>
+      ${canAttach ? `<div class="field"><label for="f-files">Attach the ${isBal?"final tax invoice":"invoice or PI"} (PDF or image, up to 20 MB). It's read automatically to fill the amounts.</label><input type="file" id="f-files" multiple accept="application/pdf,image/png,image/jpeg,image/webp"></div>`
+                  : `<p class="hint" style="margin:0">Attachments aren't available for your access level on this page. Enter the amounts from the document below.</p>`}
+      <div class="files" id="f-attlist"></div>
+      <div id="f-readbox"></div>
+      <div class="grid2">
+        <div class="field"><label for="f-invno" id="f-invno-lab">${d.docType==="pi"?"PI no.":"Invoice / bill no."}</label><input type="text" id="f-invno" value="${esc(d.invoiceNo)}" autocomplete="off"></div>
+        <div class="field"><label for="f-invdate">Document date</label><input type="date" id="f-invdate" value="${esc(d.invoiceDate)}" max="${todayISO()}"></div>
+      </div>
+      <div class="field"><label for="f-nature">Nature of payment</label>
+        <select id="f-nature"><option value="">Choose from the master…</option>${nats.map(n=>`<option value="${esc(n.id)}" ${n.id===d.natureId?"selected":""}>${esc(n.name)}${n.section?` · ${esc(n.section)}`:" · no TDS"}</option>`).join("")}<option value="other" ${d.natureId==="other"?"selected":""}>Other (not in the master)…</option></select>
+        <span class="hint" id="f-nature-hint">${S.isAdmin?"New type of expense? Add it under Approvals &amp; settings → Nature of payment master.":"New type of expense? Ask an admin to add it to the master, or choose Other."}</span></div>
+      <div class="field" id="f-nature-other-wrap" ${d.natureId==="other"?"":"hidden"}><label for="f-nature-other">Describe the nature of payment</label><input type="text" id="f-nature-other" value="${esc(d.natureOther)}" placeholder="e.g. trade show stall fabrication"></div>
+      <div class="field"><label for="f-desc">Details for approvers</label><textarea id="f-desc" rows="2" placeholder="e.g. Sep 2026 storage and pick-pack at Bhiwandi FC, PO 4512">${esc(d.description)}</textarea></div>
+      <div class="field"><label for="f-cc">Cost centre</label><select id="f-cc"><option value="">Choose…</option>${ccs.map(c=>`<option ${c===d.costCentre?"selected":""}>${esc(c)}</option>`).join("")}</select></div>
+    </div>
+    <div class="sect"><div class="sect-h">Amounts</div>
+      <div class="grid3">
+        <div class="field"><label for="f-taxable">Taxable value (₹)</label><input type="number" id="f-taxable" min="0" step="0.01" inputmode="decimal" value="${esc(d.taxable)}"></div>
+        <div class="field"><label for="f-gstrate">GST rate</label><select id="f-gstrate">${gstOpts.map(g=>`<option value="${g}" ${g===String(d.gstRate)?"selected":""}>${g}%</option>`).join("")}<option value="custom" ${d.gstRate==="custom"?"selected":""}>As on invoice / mixed</option></select></div>
+        <div class="field"><label for="f-gstamt">GST amount (₹)</label><input type="number" id="f-gstamt" min="0" step="0.01" value="${esc(d.gstAmount)}" ${d.gstRate==="custom"?"":"readonly"}></div>
+      </div>
+      <div class="field"><span class="flabel">TDS</span>
+        <div class="grid3" style="align-items:end">
+          <label class="check"><input type="checkbox" id="f-tdson" ${d.tdsApplied?"checked":""}> <span>Deduct TDS</span></label>
+          <div class="field"><label for="f-tdssec">Section</label><input type="text" id="f-tdssec" value="${esc(d.tdsSec)}" style="text-transform:uppercase"></div>
+          <div class="field"><label for="f-tdsrate">Rate (%)</label><input type="number" id="f-tdsrate" min="0" max="100" step="0.01" value="${esc(d.tdsRate)}"></div>
+        </div>
+        <span class="hint" id="f-tds-hint"></span>
+      </div>
+      <div class="field" id="f-adv-wrap" ${d.kind==="advance"?"":"hidden"}><label for="f-paygross">Advance to pay now (₹, including GST, before TDS)</label><input type="number" id="f-paygross" min="0" step="0.01" value="${esc(d.payGross)}"><span class="hint" id="f-adv-hint"></span></div>
+      <div class="voucher" id="f-calc"></div>
+      <p class="hint" style="margin:0">TDS is worked out on the taxable value (GST excluded) and rounded to the rupee. On an advance, TDS is deducted on the taxable part of the advance.</p>
+    </div>
+    <div class="sect"><div class="sect-h">Terms of payment</div>
+      <div class="grid3">
+        <div class="field"><label for="f-terms">Terms</label><select id="f-terms">${TERMS.map(t=>`<option value="${t.v}" ${t.v===d.termsCode?"selected":""}>${esc(t.l)}</option>`).join("")}</select></div>
+        <div class="field"><label for="f-due">Pay by</label><input type="date" id="f-due" value="${esc(d.dueDate)}"><span class="hint" id="f-due-hint"></span></div>
+        <div class="field"><label for="f-priority">Priority</label><select id="f-priority"><option value="normal" ${d.priority!=="urgent"?"selected":""}>Normal</option><option value="urgent" ${d.priority==="urgent"?"selected":""}>Urgent</option></select></div>
+      </div>
+      <div class="field" id="f-terms-custom-wrap" ${d.termsCode==="custom"?"":"hidden"}><label for="f-terms-custom">Describe the terms</label><input type="text" id="f-terms-custom" value="${esc(d.termsText)}" placeholder="e.g. 50% advance, 50% after delivery"></div>
+      <span class="hint">Approvers can change the terms while the request is with them.</span>
+    </div>
+    <div class="sect"><div class="sect-h">Influencer payment</div>
+      <label class="check"><input type="checkbox" id="f-inf" ${d.isInf?"checked":""}> <span>This pays an influencer or creator for Instagram content</span></label>
+      <div class="grid2" id="f-inf-wrap" ${d.isInf?"":"hidden"}>
+        <div class="field"><label for="f-ig">Instagram handle</label><input type="text" id="f-ig" value="${esc(d.igHandle)}" placeholder="@handle" autocomplete="off"><span class="err" id="f-ig-err" hidden></span></div>
+        <div class="field"><label for="f-reel">Reel link</label><input type="url" id="f-reel" value="${esc(d.reelLink)}" placeholder="https://www.instagram.com/reel/…" autocomplete="off"><span class="err" id="f-reel-err" hidden></span></div>
+      </div>
+      <span class="hint" id="f-inf-hint"></span>
+    </div>
+    <p class="err" id="f-err" hidden></p>`;
+  setFoot(`<button class="btn" type="button" data-close>Cancel</button><button class="btn primary" type="button" id="f-submit">${st.editId?"Resubmit for approval":isBal?"Submit balance for approval":"Submit for approval"}</button>`);
+  renderAttachList(); renderFormRead(); applyAuto();
+}
+function renderAttachList(){
+  const el=$("#f-attlist"); if(!el) return; const st=S.drawer;
+  el.innerHTML=st.attachments.map((a,i)=>`<div class="file"><span class="fn">${esc(a.name)}</span><span style="display:flex;gap:6px;align-items:center">${a.uploading?`<span class="muted small">Uploading…</span>`:`<span class="muted small">${a.size?Math.max(1,Math.round(a.size/1024))+" KB":""}</span>${S.sample?`<button class="btn ghost" type="button" data-readatt="${i}" ${st.reading?"disabled":""}>Read</button>`:""}<button class="btn ghost" type="button" data-rmatt="${i}">Remove</button>`}</span></div>`).join("");
+}
+function renderFormRead(){
+  const el=$("#f-readbox"); if(!el) return; const st=S.drawer;
+  if(st.reading){ el.innerHTML=`<div class="readbox"><span><strong>Reading the document…</strong> This can take up to a minute.</span><button class="btn sm" type="button" data-stopread style="align-self:flex-start">Stop</button></div>`; return; }
+  if(st.readErr){ el.innerHTML=`<div class="notice warn"><p class="small">${esc(st.readErr)}</p></div>`; return; }
+  if(st.extracted){ const c=compute(readFormSafe()); el.innerHTML=`<div class="readbox"><strong>From the document</strong>${readTableHTML(st.extracted,{taxable:c.taxable,gstAmount:c.gst,invoiceTotal:c.total})}</div>`; return; }
+  el.innerHTML="";
+}
+function readFormSafe(){ return $("#f-taxable") ? readForm() : S.drawer.draft; }
+function applyAuto(){
+  const st=S.drawer; if(!st || st.mode!=="form") return;
+  const d=readForm(); const p=S.payees.get(d.payeeId); const isBal=st.kind==="balance";
+  const nat = d.natureId && d.natureId!=="other" ? natureById(d.natureId) : null;
+  $("#f-nature-other-wrap").hidden = d.natureId!=="other";
+  $("#f-invno-lab").textContent = d.docType==="pi" ? "PI no." : "Invoice / bill no.";
+  $("#f-adv-wrap").hidden = d.kind!=="advance";
+  const on=$("#f-tdson"), sec=$("#f-tdssec"), rate=$("#f-tdsrate"), hint=$("#f-tds-hint");
+  let plan=null;
+  if(d.natureId==="other") st.tdsAuto=false;
+  if(isBal && st.parent){
+    if(st.tdsAuto){ on.checked=!!st.parent.tdsApplied; sec.value=st.parent.tdsSectionCode||""; rate.value=st.parent.tdsApplied?String(st.parent.tdsRate):""; }
+    st.planText=`Same TDS as the advance: ${tdsText(st.parent)}.`;
+  } else if(nat){
+    plan=tdsPlan(nat, p, r2(d.taxable), d.invoiceDate, {excludeId:st.editId});
+    st.planText=plan.text;
+    if(st.tdsAuto){ on.checked=plan.applies; sec.value=plan.section; rate.value=plan.applies?String(plan.rate):""; }
+  } else st.planText="";
+  const locked = st.tdsAuto && (nat || isBal);
+  [on,sec,rate].forEach(el=>{ el.disabled=locked; });
+  if(!locked){ sec.disabled=!on.checked; rate.disabled=!on.checked; }
+  let t = "";
+  if(isBal) t=esc(st.planText);
+  else if(nat) t=`<span class="${plan.applies?"good":""}">${esc(plan.text)}</span>${plan.crossing?` <span class="alert">This invoice crosses the annual limit, so TDS on earlier invoices this year (${esc(money0(plan.prior))}) may also be due.</span>`:""}${!p?" Choose the payee to check the threshold.":""}`;
+  else if(d.natureId==="other") t="Not in the master, so set TDS yourself.";
+  else t="Choose the nature of payment and TDS is worked out for you.";
+  if(!st.tdsAuto && (nat||isBal)) t+=` TDS set by hand. <button class="btn ghost" type="button" data-tdsauto style="padding:0">Use the master</button>`;
+  else if(st.tdsAuto && (nat||isBal)) t+=` <button class="btn ghost" type="button" data-tdsman style="padding:0">Change</button>`;
+  hint.innerHTML=t;
+  const ph=$("#f-payee-hint");
+  if(ph) ph.innerHTML = p ? `${p.pan?`PAN ${esc(p.pan)} (${panEntity(p.pan)==="individual"?"individual/HUF":"company/firm"})`:`<span style="color:var(--bad)">No PAN on file, so TDS is 20% when it applies.</span>`}${p.gstin?` · GSTIN ${esc(p.gstin)}`:" · no GSTIN"} · ${p.account?`bank ${esc(p.ifsc)} ${esc(last4(p.account))}`:`no bank details`} <button class="btn ghost" type="button" data-editpayee="${esc(p.id)}" style="padding:0">Edit payee</button>` : (S.payees.size?"":"No payees yet. Choose “Add a new payee” to set one up.");
+  if(!st.infManual){ $("#f-inf").checked = !!nat?.influencer || (p && !!p.igHandle); }
+  const inf=$("#f-inf").checked; $("#f-inf-wrap").hidden=!inf; $("#f-inf-hint").textContent = inf ? "An approver must open the reel and confirm it's live before approving." : "";
+  if(inf && p?.igHandle && !$("#f-ig").value) $("#f-ig").value="@"+handleClean(p.igHandle);
+  applyDue();
+  updateCalc();
+}
+function applyDue(){
+  const st=S.drawer; const code=$("#f-terms").value, inv=$("#f-invdate").value; const t=TERMS.find(x=>x.v===code);
+  $("#f-terms-custom-wrap").hidden = code!=="custom";
+  const hint=$("#f-due-hint");
+  if(st.dueAuto && t && t.days!=null){
+    const base = (code==="advance"||code==="receipt") ? todayISO() : inv;
+    if(base){ $("#f-due").value = addDays(base, t.days); hint.textContent = code==="advance"||code==="receipt" ? "Set to today." : `Document date + ${t.days} days.`; }
+    else hint.textContent="Enter the document date to set this.";
+  } else hint.textContent = st.dueAuto ? "" : "Set by hand.";
+}
+function updateCalc(){
+  const st=S.drawer; const d=readForm(), c=compute(d);
+  if(d.gstRate!=="custom" && $("#f-gstamt")) $("#f-gstamt").value = d.taxable!=="" ? c.gst.toFixed(2) : "";
+  const levels = c.total > S.settings.tierLimit ? 2 : 1;
+  const docT = d.docType==="pi"?"PI":"Invoice";
+  let rows=`
+    <div class="vrow"><span>Taxable value</span><span class="num">${esc(money(c.taxable))}</span></div>
+    <div class="vrow"><span>GST${d.gstRate!=="custom"?` @ ${esc(d.gstRate)}%`:""}</span><span class="num">${esc(money(c.gst))}</span></div>
+    <div class="vrow"><span><strong>${docT} total</strong></span><span class="num"><strong>${esc(money(c.total))}</strong></span></div>
+    <div class="vrow"><span>TDS${d.tdsApplied?` · ${esc(d.tdsSec)} @ ${esc(c.rate)}%`:" · none"}${d.kind!=="full"?` on full ${docT.toLowerCase()}`:""}</span><span class="num">− ${esc(money(c.tds))}</span></div>`;
+  if(d.kind==="full") rows+=`<div class="vrow total"><span><strong>Net payable</strong></span><span class="num">${esc(money(c.payNet))}</span></div>`;
+  else {
+    if(d.kind==="balance" && st.parent) rows+=`<div class="vrow"><span>Paid as advance (${esc(st.parent.id)})</span><span class="num">${esc(money(st.parent.payGross))} − TDS ${esc(money(st.parent.payTds))}</span></div>`;
+    rows+=`<div class="vrow"><span>${d.kind==="advance"?"Advance":"Balance"} (incl. GST)</span><span class="num">${esc(money(c.payGross))}</span></div>
+      <div class="vrow"><span>Less TDS on this payment</span><span class="num">− ${esc(money(c.payTds))}</span></div>
+      <div class="vrow total"><span><strong>Net payable now</strong></span><span class="num">${esc(money(c.payNet))}</span></div>`;
+  }
+  rows+=`<div class="vrow"><span class="small muted">${levels===2?`Above ${esc(money0(S.settings.tierLimit))}: needs Level 1 and Level 2`:`Up to ${esc(money0(S.settings.tierLimit))}: needs Level 1 only`}</span></div>`;
+  $("#f-calc").innerHTML=rows;
+  const ah=$("#f-adv-hint"); if(ah && d.kind==="advance") ah.textContent = c.total>0 && c.payGross>0 ? `${(c.payGross/c.total*100).toFixed(1)}% of the ${docT.toLowerCase()} total. Balance after this: ${money(c.total-c.payGross)}.` : "";
+  if(st.extracted && !st.reading) renderFormRead();
+}
+function applyExtracted(ex){
+  const st=S.drawer; st.extracted=ex;
+  const set=(id,val,onlyEmpty)=>{ const el=$("#"+id); if(el && val!=null && val!=="" && (!onlyEmpty || !el.value)) el.value=val; };
+  if(ex.documentType==="proforma" && st.kind!=="balance") $("#f-doctype").value="pi";
+  if(ex.documentType==="tax_invoice") $("#f-doctype").value="tax";
+  if(st.kind==="balance"){ set("f-invno",ex.invoiceNo,false); set("f-invdate",ex.invoiceDate,false); }
+  else { set("f-invno",ex.invoiceNo,true); set("f-invdate",ex.invoiceDate,true); }
+  if(ex.taxableValue!=null){
+    $("#f-taxable").value=ex.taxableValue.toFixed(2);
+    if(ex.totalGst!=null){
+      const rate = ex.taxableValue>0 ? ex.totalGst/ex.taxableValue*100 : 0;
+      const std = ["0","5","18","40"].find(g=>Math.abs(Number(g)-rate)<0.05 && Math.abs(r2(ex.taxableValue*Number(g)/100)-ex.totalGst)<=1);
+      if(std){ $("#f-gstrate").value=std; $("#f-gstamt").readOnly=true; }
+      else { $("#f-gstrate").value="custom"; $("#f-gstamt").readOnly=false; $("#f-gstamt").value=ex.totalGst.toFixed(2); }
+    }
+  }
+  if(ex.sellerGstin && !$("#f-payee").value){
+    const p=[...S.payees.values()].find(x=>x.gstin===ex.sellerGstin);
+    if(p){ $("#f-payee").value=p.id; const d=readForm(); applyPayeeDefaults(d,p,false); if(d.costCentre) $("#f-cc").value=d.costCentre; if(d.natureId && !$("#f-nature").value) $("#f-nature").value=d.natureId; if(d.termsCode) $("#f-terms").value=d.termsCode; }
+  }
+  if(!$("#f-nature").value && ex.natureOfPayment && !$("#f-desc").value) $("#f-desc").value=ex.natureOfPayment;
+  applyAuto(); renderFormRead();
+}
+async function formRead(idx){
+  const st=S.drawer; const a=st.attachments[idx]; if(!a || a.uploading || st.reading) return;
+  st.reading=true; st.readErr=""; st.ctl=new AbortController(); renderFormRead(); renderAttachList();
+  try{
+    const blob=await blobForAttachment(a);
+    const ex=await readInvoice(blob, a.type || blob.type);
+    if(S.drawer!==st) return;
+    st.reading=false; applyExtracted(ex);
+    const miss=[ex.taxableValue==null?"taxable value":"", ex.totalGst==null?"GST":""].filter(Boolean);
+    toast(miss.length?`Read the document, but couldn't find the ${miss.join(" or ")}. Enter it yourself.`:"Amounts filled in from the document. Check them before submitting.");
+  }catch(e){ if(S.drawer!==st) return; st.reading=false; st.readErr = e.code==="fetch_failed" ? "Couldn't open that attachment." : readErr(e); }
+  finally{ if(S.drawer===st){ st.reading=false; renderFormRead(); renderAttachList(); } }
+}
+async function onFiles(input){
+  const st=S.drawer; const files=[...input.files]; input.value="";
+  const map={pdf:"application/pdf",png:"image/png",jpg:"image/jpeg",jpeg:"image/jpeg",webp:"image/webp"};
+  let firstNew=-1;
+  for(const f of files){
+    const type=map[(f.name.split(".").pop()||"").toLowerCase()] || f.type;
+    if(!Object.values(map).includes(type)){ toast(`${f.name}: attach a PDF, PNG, JPG or WebP.`,"bad"); continue; }
+    if(f.size>20*1024*1024){ toast(`${f.name} is over 20 MB. Compress it and try again.`,"bad"); continue; }
+    const tmp={name:f.name, uploading:true}; st.attachments.push(tmp); renderAttachList();
+    try{ const res=await S.assets.upload(f,{type}); Object.assign(tmp,{id:res.id,type:res.contentType,size:res.sizeBytes}); delete tmp.uploading; st.blobs[res.id]=f; if(firstNew<0) firstNew=st.attachments.indexOf(tmp); }
+    catch(e){ st.attachments.splice(st.attachments.indexOf(tmp),1);
+      toast(e?.code==="quota_or_state"?"Attachment storage is full.":e?.code==="too_large"?`${f.name} is too large.`:e?.code==="rate_limited"?"Too many uploads at once. Wait a moment and retry.":`Couldn't upload ${f.name}.`,"bad"); }
+    if(S.drawer===st) renderAttachList();
+  }
+  if(S.drawer===st && firstNew>=0 && S.sample && !st.extracted) formRead(firstNew);
+}
+async function submitRequest(){
+  const st=S.drawer, d=readForm(); st.draft=d; const isBal=st.kind==="balance";
+  const errEl=$("#f-err"); const fail=m=>{ errEl.textContent=m; errEl.hidden=false; errEl.scrollIntoView({block:"nearest"}); };
+  errEl.hidden=true;
+  const p=S.payees.get(d.payeeId);
+  if(!p) return fail("Choose who is being paid.");
+  if(!d.invoiceNo) return fail(d.docType==="pi"?"Enter the PI number.":"Enter the invoice or bill number.");
+  if(!d.invoiceDate) return fail("Enter the document date.");
+  if(!d.natureId) return fail("Choose the nature of payment.");
+  if(d.natureId==="other" && !d.natureOther) return fail("Describe the nature of payment.");
+  if(!d.costCentre) return fail("Choose a cost centre.");
+  const c=compute(d);
+  if(!(c.taxable>0)) return fail("Enter the taxable value.");
+  if(d.tdsApplied && (!d.tdsSec || !(Number(d.tdsRate)>0))) return fail("Enter the TDS section and rate, or untick Deduct TDS.");
+  if(d.kind==="advance" && !(c.payGross>0 && c.payGross<c.total)) return fail(`The advance must be more than ₹0 and less than the ${d.docType==="pi"?"PI":"invoice"} total (${money(c.total)}). For the whole amount, choose Full payment.`);
+  if(isBal && !(c.payGross>0)) return fail("There's nothing left to pay. Check the amounts against the advance.");
+  if(c.payNet<=0) return fail("Net payable must be above zero. Check GST and TDS.");
+  if(d.termsCode==="custom" && !d.termsText) return fail("Describe the terms of payment.");
+  if(!d.dueDate) return fail("Enter the date it should be paid by.");
+  if(d.isInf){
+    if(!HANDLE_RE.test(d.igHandle)) return fail("Enter the influencer's Instagram handle, e.g. @kenzen.creator.");
+    if(!REEL_RE.test(d.reelLink)) return fail("Paste the reel link from Instagram. It should look like https://www.instagram.com/reel/ABC123xyz/.");
+  }
+  if(st.reading) return fail("Wait for the document to finish reading, or stop it.");
+  if(st.attachments.some(a=>a.uploading)) return fail("Wait for the attachments to finish uploading.");
+  if(S.assets && !st.attachments.length) return fail("Attach the invoice or PI.");
+  const fam = isBal ? st.parent.id : (st.editId ? (S.requests.find(x=>x.id===st.editId)?.parentId||st.editId) : null);
+  const dup=S.requests.find(r=>r.id!==st.editId && (!fam || familyId(r)!==fam) && r.payeeId===d.payeeId && normInv(r.invoiceNo)===normInv(d.invoiceNo) && !["withdrawn","rejected"].includes(r.status));
+  if(dup) return fail(`${d.docType==="pi"?"PI":"Invoice"} ${d.invoiceNo} from ${p.name} is already on ${dup.id} (${STATUS[dup.status]?.label}). Duplicate payments are blocked. For a balance after an advance, open the advance and use “Raise balance payment”.`);
+  const nat = d.natureId!=="other" ? natureById(d.natureId) : null;
+  const now=new Date().toISOString(), me=S.me.id;
+  const levels = c.total > S.settings.tierLimit ? 2 : 1;
+  const base={payeeId:p.id, payee:{name:p.name, email:p.email||"", gstin:p.gstin||"", pan:p.pan||"", beneficiary:p.beneficiary||"", account:p.account||"", ifsc:p.ifsc||"", bank:p.bank||""},
+    docType:d.docType, kind:d.kind, parentId:isBal?st.parent.id:null,
+    invoiceNo:d.invoiceNo, invoiceDate:d.invoiceDate, description:d.description,
+    natureId:d.natureId, nature:nat?nat.name:d.natureOther, costCentre:d.costCentre,
+    taxable:c.taxable, gstRate:d.gstRate==="custom"?"custom":Number(d.gstRate), gstAmount:c.gst, invoiceTotal:c.total,
+    tdsSectionCode: nat?.section || d.tdsSec || "", tdsApplied:d.tdsApplied, tdsRate:d.tdsApplied?c.rate:0, tdsAmount:c.tds, tdsAuto:!!st.tdsAuto, tdsNote:st.planText||"",
+    invoiceNet:c.net, payGross:c.payGross, payTds:c.payTds, netPayable:c.payNet,
+    termsCode:d.termsCode, termsText:d.termsCode==="custom"?d.termsText:"", dueDate:d.dueDate, priority:d.priority,
+    isInfluencer:d.isInf, igHandle:d.isInf?"@"+handleClean(d.igHandle):"", reelLink:d.isInf?d.reelLink:"", reelCheckedBy:null, reelCheckedAt:null,
+    extracted:st.extracted||null, overrides:{},
+    attachments:st.attachments.map(({id,name,type,size})=>({id,name,type:type||"",size:size||0})),
+    levels, tierLimit:S.settings.tierLimit, status:"pending_l1", l1By:null, l1At:null, l2By:null, l2At:null, updatedAt:now};
+  const btn=$("#f-submit"); btn.disabled=true;
+  try{
+    if(st.editId){
+      const ref=S.db.doc("requests/"+st.editId); const snap=await ref.get(); const r=snap.data();
+      if(!snap.exists || r.requestedBy!==me || r.status!=="rejected") throw {message:"Only a request that was sent back to you can be resubmitted."};
+      await ref.update({...base, history:[...(r.history||[]), {at:now,by:me,action:"resubmitted",note:""}]});
+      toast(`${st.editId} resubmitted for approval.`);
+    } else {
+      const id=newReqId();
+      await S.db.doc("requests/"+id).set({...base, id, balanceId:null, requestedBy:me, createdAt:now, history:[{at:now,by:me,action:"submitted",note:isBal?`Balance against advance ${st.parent.id}`:""}]});
+      if(isBal){
+        const pref=S.db.doc("requests/"+st.parent.id); const ps=await pref.get();
+        if(ps.exists) await pref.update({balanceId:id, updatedAt:now, history:[...(ps.data().history||[]), {at:now,by:me,action:"balance_raised",note:`${id} · ${money(c.payNet)} net`}]});
+      }
+      toast(`${id} submitted for Level 1 approval.`);
+    }
+    closeDrawer();
+  }catch(e){ btn.disabled=false; fail(e.code?writeErr(e):e.message); }
+}
+
+/* ---------- payee form ---------- */
+function openPayee(id, returnTo){ openDrawer({mode:"payee", payeeId:id||null, returnTo:returnTo||null}); }
+function renderPayeeForm(){
+  const st=S.drawer; const p=st.payeeId ? (S.payees.get(st.payeeId)||{}) : {};
+  $("#drawer-title").textContent = st.payeeId ? `Edit ${p.name||"payee"}` : "Add payee";
+  const nats=S.settings.natures.filter(n=>!n.inactive || n.id===p.defaultNatureId);
+  $("#drawer-body").innerHTML=`
+    <div class="sect"><div class="sect-h">Vendor or influencer</div>
+      <div class="field"><label for="p-name">Payee name (as you know them)</label><input type="text" id="p-name" value="${esc(p.name)}"></div>
+      <div class="grid2">
+        <div class="field"><label for="p-gstin">GSTIN (optional)</label><input type="text" id="p-gstin" value="${esc(p.gstin)}" maxlength="15" style="text-transform:uppercase"></div>
+        <div class="field"><label for="p-pan">PAN</label><input type="text" id="p-pan" value="${esc(p.pan)}" maxlength="10" style="text-transform:uppercase"><span class="hint">Taken from GSTIN if left blank. Without a PAN, TDS is 20%.</span></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label for="p-email">Remittance email (optional)</label><input type="email" id="p-email" value="${esc(p.email)}"></div>
+        <div class="field"><label for="p-ig">Instagram handle (influencers)</label><input type="text" id="p-ig" value="${p.igHandle?"@"+esc(handleClean(p.igHandle)):""}" placeholder="@handle"></div>
+      </div>
+    </div>
+    <div class="sect"><div class="sect-h">Bank details (optional)</div>
+      <p class="hint" style="margin:0">Saved with the payee and shown to Finance on every future request.${st.payeeId&&p.account?" Changes are logged and put open requests for this payee on hold until resubmitted.":""}</p>
+      <div class="field"><label for="p-benef">Beneficiary name (as per bank)</label><input type="text" id="p-benef" value="${esc(p.beneficiary)}"></div>
+      <div class="grid2">
+        <div class="field"><label for="p-acct">Account number</label><input type="text" id="p-acct" inputmode="numeric" autocomplete="off" value="${esc(p.account)}"></div>
+        <div class="field"><label for="p-acct2">Re-enter account number</label><input type="text" id="p-acct2" inputmode="numeric" autocomplete="off" value="${esc(p.account)}"></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label for="p-ifsc">IFSC</label><input type="text" id="p-ifsc" maxlength="11" value="${esc(p.ifsc)}" style="text-transform:uppercase"></div>
+        <div class="field"><label for="p-bank">Bank &amp; branch</label><input type="text" id="p-bank" value="${esc(p.bank)}"></div>
+      </div>
+    </div>
+    <div class="sect"><div class="sect-h">Defaults for new requests</div>
+      <div class="grid3">
+        <div class="field"><label for="p-nature">Nature of payment</label><select id="p-nature"><option value="">None</option>${nats.map(n=>`<option value="${esc(n.id)}" ${n.id===p.defaultNatureId?"selected":""}>${esc(n.name)}</option>`).join("")}</select></div>
+        <div class="field"><label for="p-cc">Cost centre</label><select id="p-cc"><option value="">None</option>${S.settings.costCentres.map(c=>`<option ${c===p.defaultCc?"selected":""}>${esc(c)}</option>`).join("")}</select></div>
+        <div class="field"><label for="p-terms">Terms of payment</label><select id="p-terms"><option value="">None</option>${TERMS.filter(t=>t.v!=="custom").map(t=>`<option value="${t.v}" ${t.v===p.defaultTerms?"selected":""}>${esc(t.l)}</option>`).join("")}</select></div>
+      </div>
+    </div>
+    <p class="err" id="p-err" hidden></p>`;
+  setFoot(`<button class="btn" type="button" id="p-cancel">${st.returnTo?"Back to request":"Cancel"}</button>${S.canWrite?`<button class="btn primary" type="button" id="p-save">Save payee</button>`:""}`);
+}
+async function savePayee(){
+  const st=S.drawer; const v=id=>($("#"+id)?.value||"").trim();
+  const errEl=$("#p-err"); const fail=m=>{ errEl.textContent=m; errEl.hidden=false; errEl.scrollIntoView({block:"nearest"}); };
+  errEl.hidden=true;
+  const gstin=v("p-gstin").toUpperCase(); let pan=v("p-pan").toUpperCase(); const ig=handleClean(v("p-ig"));
+  const rec={name:v("p-name"), gstin, pan, email:v("p-email"), igHandle:ig, defaultNatureId:v("p-nature"), defaultCc:v("p-cc"), defaultTerms:v("p-terms"),
+    beneficiary:v("p-benef"), account:v("p-acct").replace(/\s+/g,""), ifsc:v("p-ifsc").toUpperCase(), bank:v("p-bank")};
+  if(!rec.name) return fail("Enter the payee name.");
+  if(gstin && !GSTIN_RE.test(gstin)) return fail("That GSTIN doesn't look right. It should be 15 characters, e.g. 36AABCK1234L1Z5.");
+  if(!pan && gstin) rec.pan=pan=gstin.slice(2,12);
+  if(pan && !PAN_RE.test(pan)) return fail("PAN should be 5 letters, 4 digits, 1 letter.");
+  if(gstin && pan && gstin.slice(2,12)!==pan) return fail("The PAN doesn't match the PAN inside the GSTIN (characters 3 to 12).");
+  if(ig && !HANDLE_RE.test(ig)) return fail("Instagram handles use letters, numbers, dots and underscores only.");
+  const anyBank = rec.beneficiary || rec.account || rec.ifsc || rec.bank || v("p-acct2");
+  if(anyBank){
+    if(!rec.beneficiary) return fail("Enter the beneficiary name as the bank has it, or clear the bank fields.");
+    if(!/^[0-9]{6,18}$/.test(rec.account)) return fail("Account number should be 6 to 18 digits.");
+    if(rec.account!==v("p-acct2").replace(/\s+/g,"")) return fail("The two account numbers don't match.");
+    if(!IFSC_RE.test(rec.ifsc)) return fail("IFSC should be 11 characters: 4 letters, a zero, then 6 letters or digits (e.g. HDFC0001234).");
+  }
+  const dup=[...S.payees.values()].find(p=>p.id!==st.payeeId && ((rec.gstin && p.gstin===rec.gstin) || (!rec.gstin && rec.pan && !p.gstin && p.pan===rec.pan)));
+  if(dup) return fail(`${rec.gstin?"This GSTIN":"This PAN"} is already saved for ${dup.name}.`);
+  const now=new Date().toISOString(), me=S.me.id;
+  const btn=$("#p-save"); btn.disabled=true;
+  try{
+    let id=st.payeeId;
+    if(id){
+      const old=S.payees.get(id)||{};
+      const patch={...rec, updatedAt:now, updatedBy:me};
+      if((old.account||"")!==rec.account || (old.ifsc||"")!==rec.ifsc || (old.beneficiary||"")!==rec.beneficiary){ patch.bankChangedAt=now; patch.bankChangedBy=me; patch.bankHistory=[...(old.bankHistory||[]), {at:now,by:me,from:{account:old.account||"",ifsc:old.ifsc||"",beneficiary:old.beneficiary||""}}].slice(-20); }
+      await S.db.doc("payees/"+id).update(patch);
+    } else {
+      id="py-"+rand(8).toLowerCase();
+      await S.db.doc("payees/"+id).set({...rec, id, createdAt:now, createdBy:me, updatedAt:now, updatedBy:me});
+    }
+    S.payees.set(id,{...(S.payees.get(id)||{}), ...rec, id});
+    toast(`${rec.name} saved.`);
+    if(st.returnTo){ const back=st.returnTo; back.draft.payeeId=id; applyPayeeDefaults(back.draft, rec, !st.payeeId); openDrawer(back); }
+    else closeDrawer();
+  }catch(e){ btn.disabled=false; fail(writeErr(e)); }
+}
+function applyPayeeDefaults(d, p, force){
+  if(p.defaultCc && (force || !d.costCentre)) d.costCentre=p.defaultCc;
+  if(p.defaultNatureId && natureById(p.defaultNatureId) && (force || !d.natureId)) d.natureId=p.defaultNatureId;
+  if(p.defaultTerms && (force || !d.termsCode || d.termsCode==="net30")) d.termsCode=p.defaultTerms;
+  if(p.igHandle && !d.igHandle) d.igHandle="@"+handleClean(p.igHandle);
+}
+
+/* ---------- Excel log ---------- */
+async function downloadExcel(){
+  if(!S.downloads) return toast("Downloads aren't available here.","bad");
+  const btn=$("#btn-xlsx"); btn.disabled=true; const label=btn.textContent; btn.textContent="Preparing…";
+  try{
+    await loadScript(XLSX_URL); await resolveNames();
+    const X=window.XLSX; const req=[...S.requests].sort((a,b)=>String(a.createdAt).localeCompare(String(b.createdAt)));
+    const rows=req.map(r=>{ const v=verdict(r); return {
+      "Request ID":r.id, "Raised on":xlWhen(r.createdAt), "Raised by":plainName(r.requestedBy), "Status":STATUS[r.status]?.label||r.status,
+      "Can be paid?":v.label, "Reasons":v.reasons.join("; "), "Payment type":kindLabel(r), "Advance / balance link":r.parentId||r.balanceId||"",
+      "Document":r.docType==="pi"?"Proforma invoice":"Tax invoice", "Document no.":r.invoiceNo, "Document date":r.invoiceDate||"",
+      "Payee":r.payee?.name||"", "Payee GSTIN":r.payee?.gstin||"", "Payee PAN":r.payee?.pan||"",
+      "Beneficiary":r.payee?.beneficiary||"", "Account no.":r.payee?.account||"", "IFSC":r.payee?.ifsc||"",
+      "Nature of payment":r.nature||"", "Cost centre":r.costCentre||"", "Details":r.description||"",
+      "Taxable value":Number(r.taxable)||0, "GST":Number(r.gstAmount)||0, "Invoice total":Number(r.invoiceTotal)||0,
+      "TDS section":r.tdsSectionCode||"", "TDS applied":r.tdsApplied?"Yes":"No", "TDS rate %":Number(r.tdsRate)||0, "TDS on full invoice":Number(r.tdsAmount)||0,
+      "This payment (incl. GST)":Number(r.payGross)||0, "TDS on this payment":Number(r.payTds)||0, "Net payable":Number(r.netPayable)||0,
+      "Terms of payment":termsLabel(r), "Pay by":r.dueDate||"", "Priority":r.priority==="urgent"?"Urgent":"Normal",
+      "Instagram handle":r.igHandle||"", "Reel link":r.reelLink||"", "Reel confirmed by":plainName(r.reelCheckedBy),
+      "Level 1 by":plainName(r.l1By), "Level 1 at":r.l1At?xlWhen(r.l1At):"", "Level 2 by":plainName(r.l2By), "Level 2 at":r.l2At?xlWhen(r.l2At):"",
+      "Paid on":r.paidOn||"", "UTR":r.utr||"", "Paid by":plainName(r.paidBy),
+      "Exceptions accepted":Object.values(r.overrides||{}).map(o=>`${o.reason} (by ${plainName(o.by)}: ${o.note})`).join("; ")
+    };});
+    const log=[]; for(const r of req) for(const h of (r.history||[])) log.push({"When":xlWhen(h.at), "Request ID":r.id, "Payee":r.payee?.name||"", "Action":ACT_LABEL[h.action]||h.action, "By":plainName(h.by), "Note":h.note||""});
+    log.sort((a,b)=>a.When.localeCompare(b.When));
+    const pay=[...S.payees.values()].sort((a,b)=>String(a.name).localeCompare(String(b.name))).map(p=>({"Payee":p.name, "GSTIN":p.gstin||"", "PAN":p.pan||"", "Email":p.email||"", "Instagram":p.igHandle?"@"+handleClean(p.igHandle):"",
+      "Beneficiary":p.beneficiary||"", "Account no.":p.account||"", "IFSC":p.ifsc||"", "Bank & branch":p.bank||"", "Default nature":natureById(p.defaultNatureId)?.name||"", "Default cost centre":p.defaultCc||"",
+      "Bank details changed":p.bankChangedAt?xlWhen(p.bankChangedAt):"", "Added on":xlWhen(p.createdAt), "Added by":plainName(p.createdBy)}));
+    const nat=S.settings.natures.map(n=>({"Nature of payment":n.name, "TDS section":n.section||"No TDS", "Rate % individual/HUF":n.rateInd, "Rate % company/firm":n.rateOther, "Per-invoice limit":n.single, "Annual limit":n.annual, "Influencer":n.influencer?"Yes":"", "In use":n.inactive?"No":"Yes"}));
+    const wb=X.utils.book_new();
+    const sheet=(data,name,head)=>{ const ws=X.utils.json_to_sheet(data.length?data:[Object.fromEntries(head.map(h=>[h,""]))],{header:data.length?undefined:head}); const keys=data.length?Object.keys(data[0]):head;
+      ws["!cols"]=keys.map(k=>({wch:Math.min(48,Math.max(k.length, ...data.slice(0,200).map(row=>String(row[k]??"").length))+2)})); X.utils.book_append_sheet(wb,ws,name); };
+    sheet(rows,"Requests",["Request ID"]); sheet(log,"Audit log",["When","Request ID","Payee","Action","By","Note"]); sheet(pay,"Payees",["Payee"]); sheet(nat,"Nature master",["Nature of payment"]);
+    const out=X.write(wb,{bookType:"xlsx",type:"array"});
+    await S.downloads.save({filename:`kenzen-payment-desk-log-${todayISO()}.xlsx`, data:new Uint8Array(out)});
+  }catch(e){ if(e?.code!=="declined") toast(e?.code==="rate_limited"?"A save prompt is already open.":"Couldn't build the Excel file. Try again.","bad"); }
+  finally{ btn.disabled=false; btn.textContent=label; }
+}
+
+/* ---------- events ---------- */
+function bind(){
+  document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>{ S.tab=b.dataset.tab; if(S.tab==="settings"){ S.sDirty=false; S.sDraft=null; } render(); }));
+  $("#btn-new").addEventListener("click", openNewRequest);
+  $("#btn-xlsx").addEventListener("click", downloadExcel);
+  $("#btn-add-payee").addEventListener("click", ()=>openPayee(null));
+  $("#drawer-close").addEventListener("click", closeDrawer);
+  $("#scrim").addEventListener("click", closeDrawer);
+  document.addEventListener("keydown", e=>{ if(e.key==="Escape" && S.drawer) closeDrawer();
+    if((e.key==="Enter"||e.key===" ") && e.target.matches("tr[data-open],tr[data-payee]")){ e.preventDefault(); e.target.click(); } });
+  ["flt-q","flt-status","flt-cc","flt-verdict"].forEach(id=>$("#"+id).addEventListener("input", renderAll));
+  $("#payee-q").addEventListener("input", renderPayees);
+
+  document.addEventListener("click", e=>{
+    const t=e.target;
+    if(t.closest("a[href]")) return;
+    const go=t.closest("[data-goto]"); if(go){ S.tab=go.dataset.goto; S.sDraft=null; S.sDirty=false; render(); return; }
+    if(t.closest("[data-new]")) return openNewRequest();
+    if(t.closest("[data-addpayee]")) return openPayee(null);
+    const jm=t.closest("[data-jump]"); if(jm) return openDrawer({mode:"detail", id:jm.dataset.jump});
+    const bl=t.closest("[data-balance]"); if(bl) return openBalance(bl.dataset.balance);
+    const op=t.closest("[data-open]"); if(op && !$("#drawer").contains(op)) return openDrawer({mode:"detail", id:op.dataset.open});
+    const pe=t.closest("[data-payee]"); if(pe) return openPayee(pe.dataset.payee);
+    const ep=t.closest("[data-editpayee]"); if(ep){ const back={...S.drawer, draft:readForm()}; return openPayee(ep.dataset.editpayee, back); }
+    const ac=t.closest("[data-act]"); if(ac) return doAction(ac.dataset.act);
+    const ed=t.closest("[data-edit]"); if(ed) return openEditRequest(ed.dataset.edit);
+    const tm=t.closest("[data-terms]"); if(tm){ const k=tm.dataset.terms; if(k==="edit"){ S.drawer.editTerms=true; renderDetail(false); } else if(k==="cancel"){ S.drawer.editTerms=false; renderDetail(false); } else saveTerms(); return; }
+    if(t.id==="d-read") return detailRead();
+    if(t.closest("[data-close]")) return closeDrawer();
+    if(t.closest("[data-tdsauto]")){ S.drawer.tdsAuto=true; applyAuto(); return; }
+    if(t.closest("[data-tdsman]")){ S.drawer.tdsAuto=false; applyAuto(); $("#f-tdsrate").focus(); return; }
+    if(t.closest("[data-stopread]")){ S.drawer.ctl?.abort(); S.drawer.reading=false; renderFormRead(); renderAttachList(); return; }
+    const ra=t.closest("[data-readatt]"); if(ra) return formRead(Number(ra.dataset.readatt));
+    const rm=t.closest("[data-rmatt]"); if(rm){ S.drawer.attachments.splice(Number(rm.dataset.rmatt),1); renderAttachList(); return; }
+    if(t.id==="f-submit") return submitRequest();
+    if(t.id==="p-save") return savePayee();
+    if(t.id==="p-cancel"){ const back=S.drawer.returnTo; return back? openDrawer(back) : closeDrawer(); }
+    if(t.id==="set-save") return saveSettings();
+    if(t.id==="set-reset"){ S.sDirty=false; S.sDraft=null; renderSettings(); return; }
+    if(t.id==="nat-add"){ readSettingsInputs(); S.sDraft.natures.push({id:"n-"+rand(6).toLowerCase(),name:"",section:"",rateInd:0,rateOther:0,single:0,annual:0,influencer:false,inactive:false}); markDirty(); renderSettings(); markDirty(); $("#nat-name-"+(S.sDraft.natures.length-1))?.focus(); return; }
+    const ar=t.closest("[data-addrole]"); if(ar){ readSettingsInputs(); const r=ar.dataset.addrole; if(!S.sDraft.roles[r].includes(ar.dataset.id)) S.sDraft.roles[r].push(ar.dataset.id); markDirty(); resolveNames().then(()=>{ renderSettings(); markDirty(); }); return; }
+    const ur=t.closest("[data-unrole]"); if(ur){ readSettingsInputs(); const r=ur.dataset.unrole; S.sDraft.roles[r]=S.sDraft.roles[r].filter(x=>x!==ur.dataset.id); markDirty(); renderSettings(); markDirty(); return; }
+    if(!t.closest(".picker")) document.querySelectorAll(".hits").forEach(h=>h.hidden=true);
+  });
+  document.addEventListener("change", e=>{
+    const t=e.target;
+    if(t.id==="f-files") return onFiles(t);
+    if(t.dataset && t.dataset.nat!=null){ readSettingsInputs(); markDirty(); return; }
+    if(t.id==="t-terms"){ $("#t-custom-wrap").hidden = t.value!=="custom"; const tt=TERMS.find(x=>x.v===t.value); const r=S.requests.find(x=>x.id===S.drawer.id); if(tt && tt.days!=null && r){ const base=(t.value==="advance"||t.value==="receipt")?todayISO():r.invoiceDate; if(base) $("#t-due").value=addDays(base,tt.days); } return; }
+    if(!S.drawer || S.drawer.mode!=="form") return;
+    if(t.id==="f-payee"){
+      if(t.value==="__new"){ const back={...S.drawer, draft:readForm()}; back.draft.payeeId=""; return openPayee(null, back); }
+      const p=S.payees.get(t.value); const d=readForm(); if(p) applyPayeeDefaults(d,p,false); S.drawer.draft=d; renderForm(); return;
+    }
+    if(t.id==="f-nature"){ if(t.value!=="other") S.drawer.tdsAuto=true; S.drawer.infManual=false; applyAuto(); return; }
+    if(t.id==="f-tdson"){ S.drawer.tdsAuto=false; applyAuto(); return; }
+    if(t.id==="f-gstrate"){ const custom=t.value==="custom"; $("#f-gstamt").readOnly=!custom; applyAuto(); return; }
+    if(["f-doctype","f-kind","f-invdate"].includes(t.id)){ applyAuto(); return; }
+    if(t.id==="f-terms"){ applyDue(); return; }
+    if(t.id==="f-inf"){ S.drawer.infManual=true; applyAuto(); return; }
+  });
+  document.addEventListener("input", e=>{
+    const t=e.target;
+    if(S.drawer?.mode==="form" && t.closest("#drawer")){
+      if(t.id==="f-taxable") applyAuto();
+      else if(t.id==="f-tdsrate" || t.id==="f-tdssec"){ S.drawer.tdsAuto=false; updateCalc(); }
+      else if(t.id==="f-due"){ S.drawer.dueAuto=false; $("#f-due-hint").textContent="Set by hand."; }
+      else if(["f-gstamt","f-paygross"].includes(t.id)) updateCalc();
+      else if(t.id==="f-reel"){ const ok=!t.value||REEL_RE.test(t.value.trim()); const er=$("#f-reel-err"); er.hidden=ok; er.textContent=ok?"":"Use the link from Instagram's Share → Copy link, e.g. https://www.instagram.com/reel/ABC123xyz/"; }
+      else if(t.id==="f-ig"){ const ok=!t.value||HANDLE_RE.test(t.value.trim()); const er=$("#f-ig-err"); er.hidden=ok; er.textContent=ok?"":"Handles use letters, numbers, dots and underscores."; }
+    }
+    if(["set-tier","set-cc","set-gstins"].includes(t.id) || (t.dataset && t.dataset.nat!=null)){ readSettingsInputs(); markDirty(); }
+    if(t.dataset && t.dataset.pick) runSearch(t.dataset.pick, t.value.trim());
+  });
+  document.addEventListener("focusin", e=>{ const t=e.target; if(t.dataset && t.dataset.pick) runSearch(t.dataset.pick, t.value.trim()); });
+}
+
+/* ---------- boot ---------- */
+async function boot(){
+  bind(); render();
+  const c=window.claude;
+  if(!c || typeof c.use!=="function"){ S.offline=true; render(); return; }
+  const [db,user]=await Promise.all(["db","user"].map(n=>c.use(n).catch(()=>null)));
+  S.db=db; S.user=user;
+  if(!db){ S.offline=true; render(); return; }
+  Promise.all(["assets","downloads","sample"].map(n=>c.use(n).catch(()=>null))).then(async ([assets,downloads,sample])=>{
+    S.assets=assets; S.downloads=downloads; S.sample=sample;
+    if(sample){ try{ const lim=await sample.limits(); S.sampleImages=!!lim?.images; }catch(_){ S.sampleImages=false; } }
+    if(S.drawer && S.drawer.mode==="form") { S.drawer.draft=readForm(); renderForm(); }
+    render();
+  });
+  if(user){
+    try{ const me=await user.me(); S.me=me; S.isAdmin=!!(me.canEdit||me.isOwner); }catch(_){}
+    try{ const cw=await user.can("data.write"); S.canWrite = cw!==false; }catch(_){}
+  }
+  const onErr=e=>{ if(e && e.code==="revoked"){ S.offline=true; } toast("Live updates stopped. Reload the page to reconnect.","bad"); render(); };
+  db.doc("config/settings").onSnapshot(s=>{ S.settings=mergeSettings(s.exists?s.data():null); S.loaded.settings=true; schedule(); }, onErr);
+  db.collection("payees").onSnapshot(q=>{ S.payees=new Map(q.docs.map(d=>[d.id,{id:d.id,...d.data()}])); S.loaded.payees=true; schedule(); }, onErr);
+  db.collection("requests").orderBy("createdAt","desc").onSnapshot(q=>{ S.requests=q.docs.map(d=>({id:d.id,...d.data()})); S.loaded.requests=true; schedule(); }, onErr);
+  render();
+}
+boot();
+})();
+</script>
