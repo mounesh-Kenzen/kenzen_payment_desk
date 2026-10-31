@@ -6,7 +6,11 @@ async function req(path, options) {
   });
   let data = null;
   try { data = await res.json(); } catch { /* no body */ }
-  if (!res.ok) throw new Error((data && data.error) || "Something went wrong.");
+  if (!res.ok) {
+    const err = new Error((data && data.error) || "Something went wrong.");
+    if (data && data.blocked) err.blocked = true;
+    throw err;
+  }
   return data;
 }
 

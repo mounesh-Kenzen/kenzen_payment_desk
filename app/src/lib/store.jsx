@@ -31,6 +31,7 @@ export function StoreProvider({ children }) {
   const [loaded, setLoaded] = useState(false);
   const [offline, setOffline] = useState(false);
   const [offlineMsg, setOfflineMsg] = useState("");
+  const [blocked, setBlocked] = useState(false);
   const refreshing = useRef(false);
 
   const checkSession = useCallback(async () => {
@@ -52,7 +53,13 @@ export function StoreProvider({ children }) {
       setOffline(false);
       writeSettingsCache(st.settings, st.natures);
     } catch (e) {
-      if (!loaded) { setOffline(true); setOfflineMsg(e.message); }
+      // Checked fresh on every load and every 30s poll (api/state.js, reusing
+      // the Settings it already read) — a domain removed from Settings takes
+      // effect on the very next refresh, not just on the next sign-in. Takes
+      // priority over the "already loaded, ignore transient errors" guard
+      // below, since this isn't transient.
+      if (e.blocked) { setBlocked(true); setEmail(null); }
+      else if (!loaded) { setOffline(true); setOfflineMsg(e.message); }
     } finally {
       refreshing.current = false;
     }
@@ -61,12 +68,12 @@ export function StoreProvider({ children }) {
   useEffect(() => { checkSession(); }, [checkSession]);
 
   useEffect(() => {
-    if (!email) return;
+    if (!email || blocked) return;
     refresh();
     const t = setInterval(() => { if (document.visibilityState === "visible") refresh(); }, 30000);
     return () => clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [email]);
+  }, [email, blocked]);
 
   const settings = raw
     ? mergeSettings(raw.settings, raw.natures)
@@ -82,7 +89,7 @@ export function StoreProvider({ children }) {
   const sheetUrl = "";
 
   const value = {
-    email, setEmail, loaded, offline, offlineMsg, refresh, ctx, owner, sheetUrl,
+    email, setEmail, loaded, offline, offlineMsg, blocked, refresh, ctx, owner, sheetUrl,
     names: settings.names,
   };
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

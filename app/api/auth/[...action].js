@@ -29,6 +29,10 @@ export default async function handler(req, res) {
   }
 
   if (action === "me" && req.method === "GET") {
+    // This only proves there's a valid session cookie, not that its domain
+    // is still allowed — that's checked for free in /api/state (which the
+    // frontend calls right after this, on every load and every 30s refresh),
+    // reusing the Settings read it already has to do anyway.
     const email = getEmailFromReq(req);
     return sendJson(res, 200, { email });
   }

@@ -11,8 +11,23 @@ import Payments from "./pages/Payments.jsx";
 import Payees from "./pages/Payees.jsx";
 import Settings from "./pages/Settings.jsx";
 
+function Blocked() {
+  return (
+    <div className="login-wrap">
+      <div className="login-card">
+        <span className="eyebrow">Kenzen Ventures · Accounts</span>
+        <h1>Access removed</h1>
+        <p className="muted small" style={{ margin: 0 }}>
+          Your account's domain is no longer allowed to use this app. If this is unexpected, contact an admin.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function Gate() {
-  const { email } = useStore();
+  const { email, blocked } = useStore();
+  if (blocked) return <Blocked />;
   if (email === undefined) return <div className="login-wrap"><p className="muted">Loading…</p></div>;
   if (email === null) return <Login />;
   return (
