@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useStore, useName } from "../lib/store.jsx";
 import { useToast } from "../lib/toast.jsx";
 import { api } from "../lib/api.js";
-import { roleIds, money0, GSTIN_RE } from "../../shared/logic.js";
+import { roleIds, money0, GSTIN_RE, DOMAIN_RE } from "../../shared/logic.js";
 
 const ROLE_INFO = {
   admin: { title: "Admins", desc: "Change these settings and the nature master. The owner is always an admin." },
@@ -69,6 +69,7 @@ export default function Settings() {
   if (d.roles.approver2.length === 1 && d.roles.approver1.length === 1 && d.roles.approver1[0] === d.roles.approver2[0]) warn.push("The same single person is Level 1 and Level 2. Level 2 must come from someone else, so large invoices will stall.");
   if (!d.roles.finance.length) warn.push("No Finance people: approved requests can't be paid from here.");
   if (!d.companyGstins.length) warn.push("Add Kenzen's GSTINs so they're on record for checks.");
+  if (!d.allowedDomains.length) warn.push("No sign-in domains set: nobody can sign in until at least one is added.");
 
   function markDirty(next) { setDraft(next); setDirty(true); }
   function updateNature(i, patch) { const nats = d.natures.slice(); nats[i] = { ...nats[i], ...patch }; markDirty({ ...d, natures: nats }); }
@@ -94,10 +95,12 @@ export default function Settings() {
       if (n.section && (!(n.rateInd >= 0 && n.rateInd <= 100) || !(n.rateOther >= 0 && n.rateOther <= 100))) return toast(`Check the TDS rates for “${n.name}”.`, "bad");
     }
     for (const g of d.companyGstins) if (!GSTIN_RE.test(g)) return toast(g + " isn't a valid GSTIN.", "bad");
+    if (!d.allowedDomains.length) return toast("Add at least one allowed sign-in domain.", "bad");
+    for (const dom of d.allowedDomains) if (!DOMAIN_RE.test(dom)) return toast(`"${dom}" isn't a valid domain.`, "bad");
     setSaving(true);
     try {
       await api.saveSettings(
-        { tierLimit: d.tierLimit, companyGstins: d.companyGstins, costCentres: d.costCentres, names: d.names, roles: d.roles, aiExtraction: d.aiExtraction },
+        { tierLimit: d.tierLimit, companyGstins: d.companyGstins, costCentres: d.costCentres, names: d.names, roles: d.roles, aiExtraction: d.aiExtraction, allowedDomains: d.allowedDomains },
         natures
       );
       setDirty(false);
@@ -185,6 +188,14 @@ export default function Settings() {
         <div className="sect">
           <div className="sect-h">Kenzen GSTINs</div>
           <div className="field"><label htmlFor="set-gstins">One per line</label><textarea id="set-gstins" rows={3} defaultValue={(d.companyGstins || []).join("\n")} onBlur={(e) => markDirty({ ...d, companyGstins: e.target.value.split(/[\n,]/).map((s) => s.trim().toUpperCase()).filter(Boolean) })} /></div>
+        </div>
+        <div className="sect">
+          <div className="sect-h">Allowed sign-in domains</div>
+          <div className="field">
+            <label htmlFor="set-domains">One per line, e.g. kenzenventures.com</label>
+            <textarea id="set-domains" rows={2} defaultValue={(d.allowedDomains || []).join("\n")} onBlur={(e) => markDirty({ ...d, allowedDomains: e.target.value.split(/[\n,]/).map((s) => s.trim().toLowerCase()).filter(Boolean) })} />
+            <span className="hint">Only Google accounts on these domains can sign in. Changes take effect immediately — no redeploy needed.</span>
+          </div>
         </div>
         <div className="sect">
           <div className="sect-h">Cost centres</div>

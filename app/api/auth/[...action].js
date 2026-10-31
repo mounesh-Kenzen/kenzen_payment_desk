@@ -1,9 +1,9 @@
 import { OAuth2Client } from "google-auth-library";
 import { signSession, sessionCookie, clearCookie, getEmailFromReq } from "../_lib/auth.js";
 import { sendJson, sendError, readJsonBody, actionFromUrl } from "../_lib/state.js";
+import { getAllowedDomains } from "../_lib/sheets.js";
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
-const ALLOWED_DOMAIN = (process.env.ALLOWED_DOMAIN || "").toLowerCase();
 
 export default async function handler(req, res) {
   const action = actionFromUrl(req, "/api/auth/");
@@ -16,8 +16,9 @@ export default async function handler(req, res) {
       const payload = ticket.getPayload();
       const email = (payload.email || "").toLowerCase();
       if (!payload.email_verified) return sendError(res, 403, "Your Google email isn't verified.");
-      if (ALLOWED_DOMAIN && !email.endsWith("@" + ALLOWED_DOMAIN)) {
-        return sendError(res, 403, "Sign in with your @" + ALLOWED_DOMAIN + " Google account.");
+      const allowedDomains = await getAllowedDomains();
+      if (allowedDomains.length && !allowedDomains.some((d) => email.endsWith("@" + d))) {
+        return sendError(res, 403, "Sign in with a " + allowedDomains.map((d) => "@" + d).join(" or ") + " Google account.");
       }
       const token = signSession(email);
       res.setHeader("set-cookie", sessionCookie(token));

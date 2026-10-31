@@ -52,6 +52,7 @@ export const ACT_LABEL = {
 
 export const IFSC_RE = /^[A-Z]{4}0[A-Z0-9]{6}$/;
 export const GSTIN_RE = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
+export const DOMAIN_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i;
 export const PAN_RE = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
 export const HANDLE_RE = /^@?[A-Za-z0-9._]{1,30}$/;
 export const REEL_RE = /^https?:\/\/(www\.)?instagram\.com\/(reel|reels|p|tv)\/[A-Za-z0-9_-]{5,}\/?(\?.*)?$/i;
@@ -106,6 +107,10 @@ export function mergeSettings(x, natures) {
     names: x.names || {},
     natures: nats,
     aiExtraction: !!x.aiExtraction,
+    // Google email domains allowed to sign in. Empty here means "not yet
+    // configured by an admin" — the server falls back to the ALLOWED_DOMAIN
+    // env var in that case (see api/_lib/sheets.js getAllowedDomains()).
+    allowedDomains: lc(x.allowedDomains),
     roles: { admin: lc(roles.admin), approver1: lc(roles.approver1), approver2: lc(roles.approver2), finance: lc(roles.finance) },
   };
 }

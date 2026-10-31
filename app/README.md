@@ -114,6 +114,27 @@ read/writes.
    service account's own Client ID from §1.3 (a plain number), which is a
    different credential for a different purpose.
 
+**Allowing a second domain** (e.g. people at `earthful.me` in addition to
+`kenzenventures.com`): the app itself already supports this —
+`ALLOWED_DOMAIN` takes a comma-separated list
+(`kenzenventures.com,earthful.me`). Whether Google lets a second domain's
+accounts complete sign-in at all depends on how the consent screen in step 1
+is set up:
+- If it's set to **Internal**, sign-in is restricted to the one Google
+  Workspace customer tied to this GCP project, full stop — a second,
+  genuinely separate Workspace organization can't sign in no matter what the
+  app's own domain check says. This works fine if `earthful.me` is actually
+  a secondary domain *of the same Workspace account* as `kenzenventures.com`
+  (common when one person/company owns multiple domains under one Workspace
+  subscription) — nothing more to do in that case.
+- If `earthful.me` is a genuinely separate Workspace (or not on Workspace at
+  all), switch the consent screen's User type to **External**. Since the app
+  won't be through Google's verification review, by default only up to 100
+  **Test users** (added under the consent screen's Audience/Test users
+  section, by exact email) can sign in — add each real person there. This
+  shows a one-click-through "Google hasn't verified this app" warning to
+  everyone signing in, which is normal for an internal tool at this scale.
+
 ### 1.7 Set environment variables on Vercel
 Project → **Settings → Environment Variables**:
 

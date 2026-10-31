@@ -12,11 +12,18 @@ export async function loadCtx(email) {
 
 export async function publicState(email) {
   const { ctx, owner } = await loadCtx(email);
+  // Mirrors getAllowedDomains()'s fallback without another Sheets read (this
+  // is polled every 30s by the client) — shows the effective list (env
+  // default pre-first-save, Sheet-stored list after) so the settings screen
+  // never looks empty.
+  const allowedDomains = ctx.settings.allowedDomains.length
+    ? ctx.settings.allowedDomains
+    : (process.env.ALLOWED_DOMAIN || "").toLowerCase().split(",").map((d) => d.trim()).filter(Boolean);
   return {
     me: { id: ctx.me.id, isAdmin: ctx.isAdmin, owner },
     settings: {
       tierLimit: ctx.settings.tierLimit, companyGstins: ctx.settings.companyGstins, costCentres: ctx.settings.costCentres,
-      names: ctx.settings.names, roles: ctx.settings.roles, aiExtraction: ctx.settings.aiExtraction,
+      names: ctx.settings.names, roles: ctx.settings.roles, aiExtraction: ctx.settings.aiExtraction, allowedDomains,
     },
     natures: ctx.settings.natures,
     payees: Array.from(ctx.payees.values()),

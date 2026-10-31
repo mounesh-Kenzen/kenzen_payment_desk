@@ -1,8 +1,8 @@
 import { Readable } from "stream";
 import { getAuth, driveApi } from "./google.js";
+import { getAllowedDomains } from "./sheets.js";
 
 const ROOT_FOLDER_ID = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID;
-const DOMAIN = process.env.ALLOWED_DOMAIN || "";
 
 // The "Kenzen Payment Desk" folder lives in a Shared Drive, not the service
 // account's own My Drive (which has no storage of its own — see README §1.3
@@ -34,10 +34,15 @@ export async function folder(name) {
 }
 
 async function shareDomainWithLink(fileId) {
-  if (!DOMAIN) return;
-  try {
-    await driveApi().permissions.create({ fileId, supportsAllDrives: true, requestBody: { type: "domain", domain: DOMAIN, role: "reader" } });
-  } catch { /* sharing is best-effort; the file still works for people with direct access */ }
+  // Drive's "domain" permission type only takes one domain per call, so this
+  // grants it once per domain configured (Settings, falling back to the
+  // ALLOWED_DOMAIN env var — see getAllowedDomains()).
+  const domains = await getAllowedDomains();
+  for (const domain of domains) {
+    try {
+      await driveApi().permissions.create({ fileId, supportsAllDrives: true, requestBody: { type: "domain", domain, role: "reader" } });
+    } catch { /* sharing is best-effort; the file still works for people with direct access */ }
+  }
 }
 
 // Step 1 of a client-side upload: get a Google Drive resumable session URI

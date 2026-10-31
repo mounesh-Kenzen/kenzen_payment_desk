@@ -7,7 +7,7 @@ import { statusLabel, kindLabel, termsLabel, verdict } from "../../shared/logic.
 
 const SHEET_ID = process.env.GOOGLE_SHEET_ID;
 
-const REQ_HEAD = ["Request ID", "Raised on", "Raised by", "Status", "Can be paid?", "Reasons", "Payment type", "Advance / balance link", "Document", "Document no.", "Document date", "Payee", "Payee GSTIN", "Payee PAN", "Nature of payment", "Cost centre", "Taxable value", "GST", "Invoice total", "TDS section", "TDS rate %", "TDS on full invoice", "This payment (incl. GST)", "TDS on this payment", "Net payable", "Terms of payment", "Pay by", "Priority", "Instagram handle", "Reel link", "Level 1 by", "Level 2 by", "Paid on", "UTR", "Paid by", "Data (do not edit)"];
+const REQ_HEAD = ["Request ID", "Raised on", "Raised by", "Raised by (name)", "Status", "Can be paid?", "Reasons", "Payment type", "Advance / balance link", "Document", "Document no.", "Document date", "Payee", "Payee GSTIN", "Payee PAN", "Nature of payment", "Cost centre", "Taxable value", "GST", "Invoice total", "TDS section", "TDS rate %", "TDS on full invoice", "This payment (incl. GST)", "TDS on this payment", "Net payable", "Terms of payment", "Pay by", "Priority", "Instagram handle", "Reel link", "Level 1 by", "Level 2 by", "Paid on", "UTR", "Paid by", "Data (do not edit)"];
 const PAYEE_HEAD = ["ID", "Payee", "GSTIN", "PAN", "Email", "Instagram", "Beneficiary", "Account no.", "IFSC", "Bank & branch", "Default nature ID", "Default cost centre", "Default terms", "Added on", "Added by", "Updated on", "Updated by", "Bank changed on", "Bank changed by"];
 const PAYEE_KEYS = ["id", "name", "gstin", "pan", "email", "igHandle", "beneficiary", "account", "ifsc", "bank", "defaultNatureId", "defaultCc", "defaultTerms", "createdAt", "createdBy", "updatedAt", "updatedBy", "bankChangedAt", "bankChangedBy"];
 const NAT_HEAD = ["ID", "Nature of payment", "TDS section", "Rate % individual/HUF", "Rate % company/firm", "Per-invoice limit", "Annual limit", "Influencer", "In use"];
@@ -73,6 +73,17 @@ export async function writeSettingsRaw(obj) {
   });
 }
 
+// Used both at sign-in (does this email's domain get in?) and when sharing
+// uploaded files/exports (Drive's "domain" permission type). Admin-editable
+// via Approvals & settings once saved there; until then, falls back to the
+// ALLOWED_DOMAIN env var so existing deployments don't suddenly open up.
+export async function getAllowedDomains() {
+  const raw = await readSettingsRaw();
+  const configured = Array.isArray(raw.allowedDomains) ? raw.allowedDomains.map((d) => String(d).trim().toLowerCase()).filter(Boolean) : [];
+  if (configured.length) return configured;
+  return (process.env.ALLOWED_DOMAIN || "").toLowerCase().split(",").map((d) => d.trim()).filter(Boolean);
+}
+
 export async function readNatures() {
   await ensureSheets();
   const rows = await getValues(`'Nature master'!A2:${NAT_LAST_COL}`);
@@ -132,7 +143,7 @@ export async function writePayeeRow(o) {
 
 function reqRow(ctx, r) {
   const v = verdict(ctx, r); const p = r.payee || {};
-  return [r.id, r.createdAt, r.requestedBy, statusLabel(r.status), v.label, v.reasons.join("; "), kindLabel(r), r.parentId || r.balanceId || "",
+  return [r.id, r.createdAt, r.requestedBy, r.uploadedByName || "", statusLabel(r.status), v.label, v.reasons.join("; "), kindLabel(r), r.parentId || r.balanceId || "",
     r.docType === "pi" ? "Proforma invoice" : "Tax invoice", r.invoiceNo, r.invoiceDate, p.name || "", p.gstin || "", p.pan || "", r.nature || "", r.costCentre || "",
     Number(r.taxable) || 0, Number(r.gstAmount) || 0, Number(r.invoiceTotal) || 0, r.tdsSectionCode || "", Number(r.tdsRate) || 0, Number(r.tdsAmount) || 0,
     Number(r.payGross) || 0, Number(r.payTds) || 0, Number(r.netPayable) || 0, termsLabel(r), r.dueDate || "", r.priority === "urgent" ? "Urgent" : "Normal",
@@ -181,5 +192,9 @@ export async function refreshVerdicts(ctx) {
     const v = verdict(ctx, r);
     return [v.label, v.reasons.join("; ")];
   });
-  await sheetsApi().spreadsheets.values.update({ spreadsheetId: SHEET_ID, range: `Requests!E2:F${rows.length + 1}`, valueInputOption: "RAW", requestBody: { values } });
+  // Computed from REQ_HEAD instead of hardcoded letters, so this stays
+  // correct if columns are ever added/reordered again.
+  const statusCol = colLetter(REQ_HEAD.indexOf("Can be paid?") + 1);
+  const reasonsCol = colLetter(REQ_HEAD.indexOf("Reasons") + 1);
+  await sheetsApi().spreadsheets.values.update({ spreadsheetId: SHEET_ID, range: `Requests!${statusCol}2:${reasonsCol}${rows.length + 1}`, valueInputOption: "RAW", requestBody: { values } });
 }
