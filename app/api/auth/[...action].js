@@ -1,12 +1,12 @@
 import { OAuth2Client } from "google-auth-library";
 import { signSession, sessionCookie, clearCookie, getEmailFromReq } from "../_lib/auth.js";
-import { sendJson, sendError, readJsonBody } from "../_lib/state.js";
+import { sendJson, sendError, readJsonBody, actionFromUrl } from "../_lib/state.js";
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const ALLOWED_DOMAIN = (process.env.ALLOWED_DOMAIN || "").toLowerCase();
 
 export default async function handler(req, res) {
-  const action = (req.query.action || []).join("/");
+  const action = actionFromUrl(req, "/api/auth/");
 
   if (action === "google" && req.method === "POST") {
     try {

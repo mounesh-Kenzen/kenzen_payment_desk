@@ -24,6 +24,18 @@ export async function publicState(email) {
   };
 }
 
+// Vercel's [...action].js catch-all routes don't reliably populate
+// req.query.action for this project's plain (non-Next.js) function setup —
+// confirmed directly against the deployed API. Parsing the action straight
+// out of req.url works regardless of how Vercel (or the local dev-api-server)
+// handles dynamic route query population.
+export function actionFromUrl(req, prefix) {
+  const pathname = String(req.url || "").split("?")[0];
+  const idx = pathname.indexOf(prefix);
+  const rest = idx >= 0 ? pathname.slice(idx + prefix.length) : "";
+  return rest.replace(/^\/+/, "").replace(/\/+$/, "");
+}
+
 export function readJsonBody(req) {
   if (req.body && typeof req.body === "object") return req.body;
   try { return JSON.parse(req.body || "{}"); } catch { return {}; }

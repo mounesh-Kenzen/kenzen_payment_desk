@@ -1,12 +1,12 @@
 import { randomUUID } from "crypto";
 import { getEmailFromReq } from "../_lib/auth.js";
-import { loadCtx, publicState, readJsonBody, sendJson, sendError } from "../_lib/state.js";
+import { loadCtx, publicState, readJsonBody, sendJson, sendError, actionFromUrl } from "../_lib/state.js";
 import { withLock } from "../_lib/lock.js";
 import { writePayeeRow } from "../_lib/sheets.js";
 import { GSTIN_RE, PAN_RE, IFSC_RE } from "../../shared/logic.js";
 
 export default async function handler(req, res) {
-  const action = (req.query.action || []).join("/");
+  const action = actionFromUrl(req, "/api/payees/");
   const email = getEmailFromReq(req);
   if (!email) return sendError(res, 401, "Sign in with your Kenzen Google account to use the desk.");
   if (req.method !== "POST") return sendError(res, 405, "Method not allowed.");
