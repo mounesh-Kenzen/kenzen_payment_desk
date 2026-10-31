@@ -73,21 +73,24 @@ export default function Layout() {
         </div>
       </header>
 
-      <section className="ledger" aria-label="Totals">
+      {ctx.isAdmin && <section className="ledger" aria-label="Totals">
         <div className="you"><span className="lab">Waiting on you</span><span className="val">{loaded ? mine.length : "—"}</span><span className="sub">{loaded ? (mine.length ? `${mine.length} item${mine.length === 1 ? "" : "s"} to action` : "Nothing to action") : "Loading…"}</span></div>
         <div><span className="lab">In approval</span><span className="val">{loaded ? money0(sum(pend)) : "—"}</span><span className="sub">{loaded ? `${pend.length} request${pend.length === 1 ? "" : "s"}` : " "}</span></div>
         <div><span className="lab">Ready to pay</span><span className="val">{loaded ? money0(sum(readyToPay)) : "—"}</span><span className="sub">{loaded ? `${readyToPay.length} cleared${appr.length > readyToPay.length ? ` · ${appr.length - readyToPay.length} on hold` : ""}` : " "}</span></div>
         <div><span className="lab">Paid this {MONTHS[new Date().getMonth()]}</span><span className="val">{loaded ? money0(sum(paid)) : "—"}</span><span className="sub">{loaded ? `${paid.length} payment${paid.length === 1 ? "" : "s"}` : " "}</span></div>
-      </section>
+      </section>}
 
       <nav className="tabs" role="tablist">
-        {[
+        {(ctx.isAdmin ? [
           ["", "For you", queueCount],
           ["all", "All requests", 0],
           ["pay", "Payments", payCount],
           ["payees", "Payees", 0],
           ["settings", "Approvals & settings", 0],
-        ].map(([path, label, badge]) => (
+        ] : [
+          ["", "For you", queueCount],
+          ["payees", "Payees", 0],
+        ]).map(([path, label, badge]) => (
           <NavLink key={path || "queue"} to={"/" + path} end className={({ isActive }) => "tab" + (isActive ? " active" : "")} role="tab">
             {label} {badge > 0 && <span className="badge">{badge}</span>}
           </NavLink>

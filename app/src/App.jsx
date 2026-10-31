@@ -25,6 +25,15 @@ function Blocked() {
   );
 }
 
+// "All requests", "Payments" and "Approvals & settings" are admin-only (the
+// nav already hides these tabs for non-admins — this stops someone from
+// reaching them directly by URL instead).
+function AdminOnly({ children }) {
+  const { ctx } = useStore();
+  if (!ctx.isAdmin) return <Navigate to="/" replace />;
+  return children;
+}
+
 function Gate() {
   const { email, blocked } = useStore();
   if (blocked) return <Blocked />;
@@ -35,10 +44,10 @@ function Gate() {
       <Routes>
         <Route element={<Layout />}>
           <Route index element={<Queue />} />
-          <Route path="all" element={<AllRequests />} />
-          <Route path="pay" element={<Payments />} />
+          <Route path="all" element={<AdminOnly><AllRequests /></AdminOnly>} />
+          <Route path="pay" element={<AdminOnly><Payments /></AdminOnly>} />
           <Route path="payees" element={<Payees />} />
-          <Route path="settings" element={<Settings />} />
+          <Route path="settings" element={<AdminOnly><Settings /></AdminOnly>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
