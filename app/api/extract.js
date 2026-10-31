@@ -1,15 +1,19 @@
-import { PDFParse } from "pdf-parse";
+import { extractText, getDocumentProxy } from "unpdf";
 import { getEmailFromReq } from "./_lib/auth.js";
 import { loadCtx, readJsonBody, sendJson, sendError } from "./_lib/state.js";
 import { driveApi } from "./_lib/google.js";
 
 // Only "digital" PDFs (ones with a real text layer) can be read this way. A
 // scanned/photographed invoice saved as PDF has no extractable text, so
-// pdf-parse returns little or nothing for it — treated as a skip, not an
+// extraction returns little or nothing for it — treated as a skip, not an
 // error. Other file types (PNG/JPG/WebP) are skipped outright.
+// unpdf (not pdf-parse/pdfjs-dist directly) is used here deliberately: it has
+// zero dependencies and no optional native canvas binary, which crashed this
+// function outright on Vercel (pdfjs-dist's legacy build throws
+// "DOMMatrix is not defined" at import time when @napi-rs/canvas isn't
+// bundled into the serverless function).
 const MIN_TEXT_LENGTH = 40;
-const MAX_TEXT_CHARS = 12000;
-const MAX_PAGES = 20;
+const MAX_TEXT_CHARS = 12000; // invoices are short; this just bounds the LLM prompt size for an unusually long PDF
 
 const PROMPT = `You are reading the text of an Indian vendor tax invoice or proforma invoice (PI) for an accounts team. The text below was extracted from a digital PDF, so layout/spacing may be imperfect.
 Return ONLY a compact JSON object (no markdown, no commentary) with these keys:
@@ -53,17 +57,13 @@ export default async function handler(req, res) {
     const buf = Buffer.from(fileRes.data);
 
     let text = "";
-    const parser = new PDFParse({ data: buf });
     try {
-      const parsed = await parser.getText({ first: MAX_PAGES });
-      text = (parsed.text || "").trim();
+      const doc = await getDocumentProxy(new Uint8Array(buf));
+      const result = await extractText(doc, { mergePages: true });
+      text = (result.text || "").trim();
     } catch {
       text = "";
-    } finally {
-      await parser.destroy().catch(() => {});
     }
-
-    console.log("text: ", text)
 
     if (text.length < MIN_TEXT_LENGTH) {
       return sendJson(res, 200, { skipped: true, reason: "This looks like a scanned PDF with no selectable text, so it can't be read automatically. Fill in the details by hand." });
@@ -83,7 +83,6 @@ export default async function handler(req, res) {
         temperature: 0,
       }),
     });
-    console.log("AI response status: ", resp.status, resp);
     if (!resp.ok) {
       const t = await resp.text();
       throw new Error("AI reading failed (" + resp.status + "): " + t.slice(0, 200));
