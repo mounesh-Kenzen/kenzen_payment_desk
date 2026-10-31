@@ -286,6 +286,7 @@ export default function RequestDetail({ state }) {
         <div className="sect">
           <div className="sect-h">{r.docType === "pi" ? "Proforma invoice" : "Invoice"}</div>
           <dl className="kv">
+            {r.uploadedByName && <><dt>Uploaded by</dt><dd>{r.uploadedByName}</dd></>}
             <dt>{r.docType === "pi" ? "PI no." : "Invoice no."}</dt><dd className="mono">{r.invoiceNo}</dd>
             <dt>Date</dt><dd>{fmtDate(r.invoiceDate)}</dd>
             <dt>Payment</dt><dd>{kindLabel(r)}</dd>

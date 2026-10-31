@@ -81,6 +81,12 @@ export default async function handler(req, res) {
         model,
         messages: [{ role: "user", content: PROMPT + text }],
         temperature: 0,
+        // The free "thinking" models OpenRouter routes to by default spend
+        // several seconds on a chain-of-thought before answering (measured
+        // ~8x slower). We only need the compact JSON, so turn that off —
+        // cuts typical latency from ~10s to ~1-2s. Harmless no-op for models
+        // that don't support reasoning at all.
+        reasoning: { enabled: false },
       }),
     });
     if (!resp.ok) {

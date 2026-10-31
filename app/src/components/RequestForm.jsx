@@ -11,7 +11,7 @@ import {
 
 function newDraft() {
   return {
-    payeeId: "", docType: "tax", kind: "full", payGross: "", invoiceNo: "", invoiceDate: "", description: "",
+    uploaderName: "", payeeId: "", docType: "tax", kind: "full", payGross: "", invoiceNo: "", invoiceDate: "", description: "",
     natureId: "", natureOther: "", costCentre: "", taxable: "", gstRate: "18", gstAmount: "",
     tdsApplied: false, tdsSec: "", tdsRate: "", termsCode: "net30", termsText: "", dueDate: "", priority: "normal",
     isInf: false, igHandle: "", reelLink: "",
@@ -19,6 +19,7 @@ function newDraft() {
 }
 function draftFromReq(r) {
   return {
+    uploaderName: r.uploadedByName || "",
     payeeId: r.payeeId, docType: r.docType || "tax", kind: r.kind || "full", payGross: r.kind === "advance" ? String(r.payGross) : "",
     invoiceNo: r.invoiceNo, invoiceDate: r.invoiceDate, description: r.description || "",
     natureId: r.natureId || "", natureOther: r.natureId === "other" ? r.nature : "", costCentre: r.costCentre,
@@ -189,12 +190,14 @@ export default function RequestForm({ state }) {
     // cost centre, amounts, TDS, terms, influencer fields — can be filled in
     // later and won't block submission; the "Can this be paid?" checklist on
     // the request itself will flag what's still missing.
+    if (!d.uploaderName.trim()) return setErr("Enter who is raising this request.");
     if (!p) return setErr("Choose who is being paid.");
     if (attachments.some((a) => a.uploading)) return setErr("Wait for the attachments to finish uploading.");
     if (!attachments.length) return setErr("Attach the invoice or PI.");
 
     const natRec = d.natureId !== "other" ? natureById(ctx, d.natureId) : null;
     const base = {
+      uploadedByName: d.uploaderName.trim(),
       payeeId: p.id, docType: d.docType, kind: d.kind, parentId: isBal ? par.id : null,
       invoiceNo: d.invoiceNo, invoiceDate: d.invoiceDate, description: d.description, natureId: d.natureId, nature: natRec ? natRec.name : d.natureOther, costCentre: d.costCentre,
       taxable: c.taxable, gstRate: d.gstRate === "custom" ? "custom" : Number(d.gstRate), gstAmount: c.gst, invoiceTotal: c.total,
@@ -230,6 +233,15 @@ export default function RequestForm({ state }) {
             <span className="hint">Update the amounts if the final tax invoice differs from the PI, and attach it. The balance is worked out below.</span>
           </div>
         )}
+
+        <div className="sect">
+          <div className="sect-h">Who is raising this</div>
+          <div className="field">
+            <label htmlFor="f-uploader">Your name</label>
+            <input type="text" id="f-uploader" autoComplete="off" value={d.uploaderName} onChange={(e) => patch({ uploaderName: e.target.value })} placeholder="e.g. Priya Sharma" />
+            <span className="hint">The person filling in this request — separate from the payee below.</span>
+          </div>
+        </div>
 
         <div className="sect">
           <div className="sect-h">Who is being paid</div>
@@ -268,9 +280,14 @@ export default function RequestForm({ state }) {
             <label htmlFor="f-files">Attach the {isBal ? "final tax invoice" : "invoice or PI"} (PDF or image, up to 10 MB)</label>
             <input type="file" id="f-files" multiple accept="application/pdf,image/png,image/jpeg,image/webp" onChange={onFiles} />
           </div>
-          {ctx.settings.aiExtraction && attachments.some((a) => a.url) && (
+          {extracting && (
+            <div className="notice warn" role="status" aria-live="polite">
+              <p><strong>Reading the invoice with AI… this can take a few seconds.</strong></p>
+            </div>
+          )}
+          {ctx.settings.aiExtraction && attachments.some((a) => a.url) && !extracting && (
             <div>
-              <button className="btn sm" type="button" disabled={extracting} onClick={readWithAI}>{extracting ? "Reading…" : "Read this invoice with AI"}</button>
+              <button className="btn sm" type="button" onClick={readWithAI}>Read this invoice with AI</button>
               <span className="hint"> Fills in the document and amount fields below — check them before submitting.</span>
             </div>
           )}

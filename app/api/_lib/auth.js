@@ -23,14 +23,7 @@ export function clearCookie() {
   return cookie.serialize(COOKIE_NAME, "", { httpOnly: true, secure: SECURE, sameSite: "lax", path: "/", maxAge: 0 });
 }
 
-// TESTING ONLY: when DEV_BYPASS_EMAIL is set, every request is treated as that
-// email and Google sign-in is skipped entirely. There is no per-visitor
-// identity in this mode anyone who can reach the app acts as this one user.
-// Do not set this env var once real people other than you are using the app.
-const DEV_BYPASS_EMAIL = (process.env.DEV_BYPASS_EMAIL || "").trim().toLowerCase();
-
 export function getEmailFromReq(req) {
-  if (DEV_BYPASS_EMAIL) return DEV_BYPASS_EMAIL;
   const raw = req.headers.cookie || "";
   const parsed = cookie.parse(raw);
   const token = parsed[COOKIE_NAME];

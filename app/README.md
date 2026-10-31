@@ -93,20 +93,10 @@ move anywhere — just share it directly:
 2. Framework preset: **Vite**. Leave build settings as detected (`npm run build`, output `dist`).
 3. Don't deploy yet — add the env vars first (next step), then deploy.
 
-### 1.6 Sign-in: deferred to a later phase
-Real Google sign-in (§1.7 below) is being done in a later phase. For now the
-app runs with `DEV_BYPASS_EMAIL` set — every visitor is treated as that one
-email, no sign-in screen at all, and no OAuth client is needed yet. There is
-no per-user identity while this is set, so it's only meant for one person
-testing solo (whoever's email is in `DEV_BYPASS_EMAIL` shows as every
-request's "requested by", every approval's "approved by", etc.). **Before
-real people other than you use this, come back and do §1.7, then remove
-`DEV_BYPASS_EMAIL`.**
-
-### 1.7 Create a Google OAuth client (for real sign-in) — later phase
-Skip this for now per §1.6. This is a *separate* Google Cloud credential from
-the service account above — it identifies people signing in, the service
-account above just does the data read/writes.
+### 1.6 Create a Google OAuth client (for sign-in)
+This is a *separate* Google Cloud credential from the service account above
+— it identifies people signing in; the service account just does the data
+read/writes.
 1. Same Google Cloud project (or a different one) → **APIs & Services →
    OAuth consent screen**: User type "Internal" if your Workspace allows it
    (restricts sign-in to kenzenventures.com automatically), otherwise
@@ -124,7 +114,7 @@ account above just does the data read/writes.
    service account's own Client ID from §1.3 (a plain number), which is a
    different credential for a different purpose.
 
-### 1.8 Set environment variables on Vercel
+### 1.7 Set environment variables on Vercel
 Project → **Settings → Environment Variables**:
 
 | Name | Value |
@@ -133,12 +123,11 @@ Project → **Settings → Environment Variables**:
 | `GOOGLE_DRIVE_ROOT_FOLDER_ID` | `1e9lIWVV2Q5C0Rx3MNIAvxN8E9BnQlWCU` (the existing folder, now moved into a Shared Drive per §1.3) |
 | `GOOGLE_SERVICE_ACCOUNT_KEY` | the **whole contents** of the JSON key file from 1.2, base64-encoded (see below) |
 | `GOOGLE_IMPERSONATE_EMAIL` | **leave blank** if you used the Shared Drive approach (§1.3); only set this if you used the domain-wide delegation alternative instead |
-| `GOOGLE_CLIENT_ID` | the OAuth client ID from 1.7 (skip if using `DEV_BYPASS_EMAIL`) |
-| `VITE_GOOGLE_CLIENT_ID` | same value as above (skip if using `DEV_BYPASS_EMAIL`) |
+| `GOOGLE_CLIENT_ID` | the OAuth client ID from §1.6 |
+| `VITE_GOOGLE_CLIENT_ID` | same value as above — the frontend needs it too |
 | `ALLOWED_DOMAIN` | `kenzenventures.com` |
 | `JWT_SECRET` | a random string, e.g. output of `openssl rand -hex 32` |
 | `OWNER_EMAIL` | `accounts@kenzenventures.com` (always treated as admin) |
-| `DEV_BYPASS_EMAIL` | *(testing only, see 1.6)* set to skip sign-in; leave unset for real use |
 | `OPENROUTER_API_KEY` | *(optional)* your key from https://openrouter.ai/keys, only needed if you turn on AI invoice reading |
 | `OPENROUTER_MODEL` | *(optional)* defaults to `anthropic/claude-3.5-sonnet` |
 | `CRON_SECRET` | *(optional, only if you re-enable the daily export cron — see §3)* |
@@ -152,7 +141,7 @@ base64 -i service-account.json | tr -d '\n'
 ```
 Paste the single resulting line as `GOOGLE_SERVICE_ACCOUNT_KEY`.
 
-### 1.9 Deploy
+### 1.8 Deploy
 Trigger a deploy from Vercel (push to the connected branch, or click Deploy).
 Open the URL once it's live — the first admin sign-in should be
 `accounts@kenzenventures.com` (set as `OWNER_EMAIL`), since that account is
@@ -216,10 +205,6 @@ Whenever you change an env var in the Vercel dashboard, re-run
 `npx vercel env pull .env.local` and restart `vercel dev` to pick it up.
 
 ### 2.3 Either way
-**If you haven't set up Google OAuth yet**, set `DEV_BYPASS_EMAIL` in your
-`.env`/`.env.local` (see README §1.6) — the app then skips the sign-in screen
-entirely and treats every visitor as that one email.
-
 **Common local issues:**
 - *"GOOGLE_SERVICE_ACCOUNT_KEY is not set"* — your `.env`/`.env.local` is
   missing or stale.

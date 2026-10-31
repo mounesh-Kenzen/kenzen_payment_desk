@@ -9,19 +9,34 @@ export default function Login() {
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
   useEffect(() => {
-    if (!clientId || !window.google || !btnRef.current) return;
-    window.google.accounts.id.initialize({
-      client_id: clientId,
-      callback: async (resp) => {
-        try {
-          const r = await api.authGoogle(resp.credential);
-          setEmail(r.email);
-        } catch (e) {
-          setErr(e.message);
-        }
-      },
-    });
-    window.google.accounts.id.renderButton(btnRef.current, { theme: "outline", size: "large", width: 280 });
+    if (!clientId) return;
+    let cancelled = false;
+
+    function init() {
+      if (cancelled || !btnRef.current || !window.google?.accounts?.id) return false;
+      window.google.accounts.id.initialize({
+        client_id: clientId,
+        callback: async (resp) => {
+          try {
+            const r = await api.authGoogle(resp.credential);
+            setEmail(r.email);
+          } catch (e) {
+            setErr(e.message);
+          }
+        },
+      });
+      window.google.accounts.id.renderButton(btnRef.current, { theme: "outline", size: "large", width: 280 });
+      return true;
+    }
+
+    // The Identity Services script loads async/defer in index.html, so it
+    // may not be ready yet when this component mounts — poll briefly instead
+    // of giving up after a single check.
+    if (!init()) {
+      const t = setInterval(() => { if (init()) clearInterval(t); }, 150);
+      return () => { cancelled = true; clearInterval(t); };
+    }
+    return () => { cancelled = true; };
   }, [clientId, setEmail]);
 
   return (
